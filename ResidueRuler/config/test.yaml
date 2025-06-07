@@ -1,0 +1,8 @@
+chain_mapping:
+  "Protein A": ["A"]
+  "Protein B": ["B","B2"]
+  "Protein D": ["D"]
+
+color_thresholds:
+  green: 20
+  yellow: 33
