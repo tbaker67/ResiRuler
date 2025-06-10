@@ -29,7 +29,7 @@ def get_color(distance, thresholds):
     else:
         return "red"
 
-def generate_chimerax_script(input_csv, output_script, chains=None, thresholds=None):
+def draw_links(input_csv, output_script, chains=None, thresholds=None):
     df = pd.read_csv(input_csv)
     df["Coord1"] = df["Coord1"].apply(safe_eval)
     df["Coord2"] = df["Coord2"].apply(safe_eval)
@@ -47,4 +47,4 @@ def generate_chimerax_script(input_csv, output_script, chains=None, thresholds=N
         if chains:
             out.write("hide\n")
             for chain in chains:
-                out.write(f"show /{chain}\n")
+                out.write(f"cartoon /{chain}\n")

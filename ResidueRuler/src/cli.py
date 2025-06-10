@@ -4,8 +4,8 @@ import yaml
 import pandas as pd
 from src.resiruler.structure_parsing import load_structure, extract_CA_coords
 from src.resiruler.distance_calc import get_header_indices, read_data
-from src.resiruler.chimera_export import generate_chimerax_script
-from src.resiruler.distance_difference_plot import plot_distance_difference
+from src.resiruler.chimera_export import draw_links
+from src.resiruler.plotting import plot_distance_difference
 
 def default_command(args):
     '''
@@ -33,7 +33,7 @@ def default_command(args):
     if args.visualize:
         chx_output = args.output.replace(".csv", "_chimerax.cxc")
         chains_for_viz = sorted(set(chain for sublist in chain_mapping.values() for chain in sublist))
-        generate_chimerax_script(args.output, chx_output, chains=chains_for_viz, thresholds=thresholds)
+        draw_links(args.output, chx_output, chains=chains_for_viz, thresholds=thresholds)
         print(f"[INFO] ChimeraX script written to {chx_output}")
 
 
@@ -45,6 +45,7 @@ def compare_command(args):
         raise FileNotFoundError("One or both comparison CSV files do not exist.")
     plot_distance_difference(args.csv1, args.csv2, output_path=args.plot_out)
     print(f"[INFO] Distance difference plot saved to {args.plot_out}")
+    print(f"[INFO] Distance difference sheet saved to {args.plot_out[:-3]}csv")
 
 
 def main():

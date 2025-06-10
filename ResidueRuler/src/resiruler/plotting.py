@@ -18,27 +18,28 @@ def plot_distance_difference(csv1_path, csv2_path, output_path="distance_diff.pn
     if merged.empty:
         print("[WARNING] No valid distance pairs to compare. Plot not generated.")
         return
-    merged['Distance_diff'] = merged['Distance_1'] - merged['Distance_2']
+    merged['Distance_Diff'] = merged['Distance_1'] - merged['Distance_2']
 
     #Sort by distance difference if specified, otherwise sort in alphabetcial order by pair label
     if sort:
-        merged = merged.sort_values(by='Distance_diff', key=lambda x: x, ascending=False)
+        merged = merged.sort_values(by='Distance_Diff', key=lambda x: x, ascending=False)
     else:
         merged = merged.sort_values(by='Pair_label')
 
     
-    colors = ['orange' if diff > 0 else 'blue' for diff in merged['Distance_diff']]
+    colors = ['orange' if diff > 0 else 'blue' for diff in merged['Distance_Diff']]
 
     
     merged['Pair_label'] = merged['Chain1_Residue1'] + '\n' + merged['Chain2_Residue2']
 
+    
     
     x = np.arange(len(merged))
     bar_width = 0.4
 
     # Plot
     plt.figure(figsize=(max(7, len(merged) * 0.3), 6))
-    bars = plt.bar(x, merged['Distance_diff'], width=bar_width, color=colors)
+    bars = plt.bar(x, merged['Distance_Diff'], width=bar_width, color=colors)
 
     plt.axhline(0, color='gray', linewidth=0.8)
 
@@ -46,9 +47,11 @@ def plot_distance_difference(csv1_path, csv2_path, output_path="distance_diff.pn
     plt.ylabel('Distance Difference (Å)')
     plt.title(f"Distance Differences: {os.path.basename(csv1_path)} - {os.path.basename(csv2_path)}")
 
-    
-
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
-    print(f"Plot saved to {output_path}")
+
+    columns_to_export = ['Chain1_Residue1', 'Chain2_Residue2', 'Distance_1','Distance_2','Distance_Diff']
+    merged.to_csv(output_path[:-3] + 'csv', index=False, columns=columns_to_export)
+    
+    
