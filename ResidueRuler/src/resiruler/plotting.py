@@ -84,3 +84,34 @@ def plot_movement_shift(df, output_path='movement_plot.png'):
     plt.savefig(output_path, dpi=300)
     plt.show()
     plt.close()
+
+def plot_movement_vectors(df, output_path='movement_vectors.png', arrow_color='black', min_distance=-0.1):
+    # Filter to show only vectors above a threshold
+    df_filtered = df[df['Distance'] >= min_distance]
+
+    coords = np.array(df_filtered['Coord1'].tolist())
+    vectors = np.array(df_filtered['Diff_Vec'].tolist())
+    distances = df_filtered['Distance'].values
+
+    x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
+    u, v, w = vectors[:, 0], vectors[:, 1], vectors[:, 2]
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.quiver(x, y, z, u, v, w,
+              length=1.0,
+              normalize=False,
+              color=arrow_color,
+              linewidth=0.7,
+              arrow_length_ratio=0.2)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title(f'3D Residue Movement Vectors (N={len(df_filtered)})')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300)
+    plt.show()
+    plt.close()
