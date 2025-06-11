@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from .structure_parsing import get_coords_from_id
+from .structure_parsing import get_coords_from_id, extract_CA_coords
 
 
 def get_header_indices(df):
@@ -72,3 +72,39 @@ def read_data(df, header_indices, chain_mapping, index_map, coords):
     else:
         print(f"[WARNING] No data found")
         
+def calc_difference_aligned(structure1, structure2, chain_mapping=None):
+    """
+    Takes in two aligned structures and outputs a dataframe containing the distances between corresponding residues in the structure
+    """
+    data = []
+    #Go through all atoms in first structure 
+    for atom in structure1[0].get_atoms():
+        if atom.get_name() == 'CA':
+            chain_id = atom.get_parent().get_parent().get_id()
+            res_id = atom.get_parent().get_id()
+            resnum = res_id[1]
+            coord1 = atom.get_coord()
+            chain_id2=None
+            coord2 = None
+            try:
+                if chain_mapping:
+                    #Need to use correct chain in structure2
+                    chain_id2 = chain_mapping[chain_id]
+                    coord2 = structure2[0][chain_id2][res_id]['CA'].get_coord()
+                    #print(f"[DEBUG] Match found for {chain_id}_{resnum}")
+     
+                else:
+                    coord2 = structure2[0][chain_id][res_id]['CA'].get_coord()
+            except KeyError:
+                print(f"[WARNING] No matching residue found for {chain_id}_{resnum}")
+                continue
+            difference_vector = coord2 - coord1
+            distance = np.linalg.norm(difference_vector)
+            #ADd it all to dataframe
+            data.append({
+                'ChainID_Resnum1':f'{chain_id}_{resnum}', 
+                'ChainID_Resnum2':f'{chain_id2}_{resnum}',
+                'Coord1':coord1, 'Coord2':coord2, 
+                'Diff_Vec':difference_vector, 
+                'Distance':distance})
+    return pd.DataFrame(data).dropna()

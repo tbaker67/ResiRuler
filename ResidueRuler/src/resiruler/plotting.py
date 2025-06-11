@@ -55,3 +55,32 @@ def plot_distance_difference(csv1_path, csv2_path, output_path="distance_diff.pn
     merged.to_csv(output_path[:-3] + 'csv', index=False, columns=columns_to_export)
     
     
+def plot_movement_shift(df, output_path='movement_plot.png'):
+    coords = df['Coord1'].tolist()
+    coords = np.array(coords)
+
+    x, y, z = coords[:,0], coords[:,1], coords[:,2]
+    distances = df['Distance']
+    # Normalize distances for colormap
+    norm = plt.Normalize(distances.min(), distances.max())
+    cmap = plt.cm.winter  #Maybe add option to change color scheme
+    colors = cmap(norm(distances))
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+
+    p = ax.scatter(x, y, z, c=distances, cmap=cmap, norm=norm, s=40)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('3D Residue Positions Colored by Distance Shift')
+
+    # Add colorbar
+    cbar = fig.colorbar(p, ax=ax, shrink=0.6)
+    cbar.set_label('Distance')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300)
+    plt.show()
+    plt.close()

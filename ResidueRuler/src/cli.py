@@ -3,9 +3,9 @@ import os
 import yaml
 import pandas as pd
 from src.resiruler.structure_parsing import load_structure, extract_CA_coords
-from src.resiruler.distance_calc import get_header_indices, read_data
+from src.resiruler.distance_calc import get_header_indices, read_data, calc_difference_aligned
 from src.resiruler.chimera_export import draw_links
-from src.resiruler.plotting import plot_distance_difference
+from src.resiruler.plotting import plot_distance_difference, plot_movement_shift
 
 def default_command(args):
     '''
@@ -47,6 +47,17 @@ def compare_command(args):
     print(f"[INFO] Distance difference plot saved to {args.plot_out}")
     print(f"[INFO] Distance difference sheet saved to {args.plot_out[:-3]}csv")
 
+def movement_command(args):
+    cif1, cif2 = args.aligned_cif1, args.aligned_cif2
+    structure1 = load_structure(cif1)
+    structure2 = load_structure(cif2)
+
+    with open(args.chain_mapping) as f:
+        chain_mapping = yaml.safe_load(f)['chain_mapping']
+
+    df = calc_difference_aligned(structure1, structure2, chain_mapping)
+    df.to_csv(args.csv_out, index=False)
+    plot_movement_shift(df)     
 
 def main():
     parser = argparse.ArgumentParser(description="ResiRuler: Analyze residue distances from structure and annotation.")
@@ -67,6 +78,16 @@ def main():
     compare_parser.add_argument('csv2', help='Second CSV file to compare')
     compare_parser.add_argument('--plot-out', default='distance_diff_plot.png', help='Output image path')
     compare_parser.set_defaults(func=compare_command)
+
+    # Movement Subcommand
+    movement_parser = subparsers.add_parser('movement', help = 'Compare two aligned conformations and calculate how much each moves')
+    movement_parser.add_argument('aligned_cif1', help='First aligned cif file')
+    movement_parser.add_argument('aligned_cif2', help='Second aligned cif file')
+    movement_parser.add_argument('-c', '--chain_mapping', default=None, help='Mapping for chain of one structure to its counterpart in the other structure')
+    movement_parser.add_argument('--plot-out', default='movement_plot.png', help='Output image path')
+    movement_parser.add_argument('--csv-out', default='movement_data.csv', help='Output image path')
+    movement_parser.set_defaults(func=movement_command)
+
 
     # Parse and Run Desired Mode
     args = parser.parse_args()
