@@ -63,7 +63,7 @@ def plot_movement_shift(df, output_path='movement_plot.png'):
     distances = df['Distance']
     # Normalize distances for colormap
     norm = plt.Normalize(distances.min(), distances.max())
-    cmap = plt.cm.winter  #Maybe add option to change color scheme
+    cmap = plt.cm.plasma  #Maybe add option to change color scheme
     colors = cmap(norm(distances))
 
     fig = plt.figure(figsize=(8, 6))
@@ -85,7 +85,24 @@ def plot_movement_shift(df, output_path='movement_plot.png'):
     plt.show()
     plt.close()
 
-def plot_movement_vectors(df, output_path='movement_vectors.png', arrow_color='black', min_distance=-0.1):
+def set_equal_3d_axes(ax, coords, zoom_out_factor=1.2):
+    """
+    Set equal aspect ratio for 3D plot and apply zoom out factor.
+    """
+    x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
+
+    # Find midpoints and max range
+    mid_x, mid_y, mid_z = np.mean(x), np.mean(y), np.mean(z)
+    max_range = np.ptp(coords, axis=0).max() * zoom_out_factor / 2
+
+    # Set limits
+    ax.set_xlim(mid_x - max_range, mid_x + max_range)
+    ax.set_ylim(mid_y - max_range, mid_y + max_range)
+    ax.set_zlim(mid_z - max_range, mid_z + max_range)
+
+
+
+def plot_movement_vectors(df, output_path='movement_vectors.png',cmap_name='plasma', arrow_color='black', min_distance=-0.1):
     # Filter to show only vectors above a threshold
     df_filtered = df[df['Distance'] >= min_distance]
 
@@ -93,24 +110,37 @@ def plot_movement_vectors(df, output_path='movement_vectors.png', arrow_color='b
     vectors = np.array(df_filtered['Diff_Vec'].tolist())
     distances = df_filtered['Distance'].values
 
+    
     x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
     u, v, w = vectors[:, 0], vectors[:, 1], vectors[:, 2]
 
+    # Normalize distances for color mapping
+    norm = plt.Normalize(vmin=distances.min(), vmax=distances.max())
+    cmap = plt.cm.get_cmap(cmap_name)
+    colors = cmap(norm(distances))
+
+    # Plot
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
 
-    ax.quiver(x, y, z, u, v, w,
-              length=1.0,
-              normalize=False,
-              color=arrow_color,
-              linewidth=0.7,
-              arrow_length_ratio=0.2)
+    for i in range(len(x)):
+        ax.quiver(x[i], y[i], z[i], u[i], v[i], w[i],
+                  length=1.0,
+                  normalize=False,
+                  color=colors[i],
+                  linewidth=0.7,
+                  arrow_length_ratio=0.2)
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
+    set_equal_3d_axes(ax, coords, zoom_out_factor=1.6)
+                      
+    # Add color bar
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax, shrink=0.6)
+    cbar.set_label('Distance')
+
     ax.set_title(f'3D Residue Movement Vectors (N={len(df_filtered)})')
-
+    ax._axis3don = False
     plt.tight_layout()
     plt.savefig(output_path, dpi=300)
     plt.show()
