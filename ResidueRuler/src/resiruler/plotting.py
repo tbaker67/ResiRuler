@@ -1,7 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import ast
 import os
+
+def parse_coord_column(series):
+    return np.array([np.array(ast.literal_eval(s)) for s in series])
 
 def plot_distance_difference(csv1_path, csv2_path, output_path="distance_diff.png", sort=True):
     """
@@ -56,8 +60,7 @@ def plot_distance_difference(csv1_path, csv2_path, output_path="distance_diff.pn
     
     
 def plot_movement_shift(df, output_path='movement_plot.png'):
-    coords = df['Coord1'].tolist()
-    coords = np.array(coords)
+    coords = parse_coord_column(df['Coord1'])
 
     x, y, z = coords[:,0], coords[:,1], coords[:,2]
     distances = df['Distance']
@@ -106,8 +109,8 @@ def plot_movement_vectors(df, output_path='movement_vectors.png',cmap_name='plas
     # Filter to show only vectors above a threshold
     df_filtered = df[df['Distance'] >= min_distance]
 
-    coords = np.array(df_filtered['Coord1'].tolist())
-    vectors = np.array(df_filtered['Diff_Vec'].tolist())
+    coords = parse_coord_column(df['Coord1'])
+    vectors = parse_coord_column(df['Diff_Vec'])
     distances = df_filtered['Distance'].values
 
     

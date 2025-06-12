@@ -66,6 +66,11 @@ def read_data(df, header_indices, chain_mapping, index_map, coords):
                     lambda row: compute_distance(row['Coord1'], row['Coord2']), axis=1
                 )
 
+                #Reformat
+                block['Coord1'] = block['Coord1'].apply(lambda x: f"[{x[0]:.3f}, {x[1]:.3f}, {x[2]:.3f}]" if isinstance(x, (list, np.ndarray)) else np.nan)
+
+                block['Coord2'] = block['Coord2'].apply(lambda x: f"[{x[0]:.3f}, {x[1]:.3f}, {x[2]:.3f}]" if isinstance(x, (list, np.ndarray)) else np.nan)
+
                 output_rows.append(block)
     if output_rows:
         return pd.concat(output_rows, ignore_index=True).dropna(subset=['Distance']).reset_index(drop=True)
@@ -98,13 +103,15 @@ def calc_difference_aligned(structure1, structure2, chain_mapping=None):
             except KeyError:
                 print(f"[WARNING] No matching residue found for {chain_id}_{resnum}")
                 continue
-            difference_vector = coord2 - coord1
-            distance = np.linalg.norm(difference_vector)
+            diff_vec = coord2 - coord1
+            distance = np.linalg.norm(diff_vec)
             #ADd it all to dataframe
             data.append({
-                'ChainID_Resnum1':f'{chain_id}_{resnum}', 
-                'ChainID_Resnum2':f'{chain_id2}_{resnum}',
-                'Coord1':coord1, 'Coord2':coord2, 
-                'Diff_Vec':difference_vector, 
-                'Distance':distance})
+            'ChainID_Resnum1': f'{chain_id}_{resnum}',
+            'ChainID_Resnum2': f'{chain_id2}_{resnum}',
+            'Coord1': f"[{coord1[0]:.3f}, {coord1[1]:.3f}, {coord1[2]:.3f}]",
+            'Coord2': f"[{coord2[0]:.3f}, {coord2[1]:.3f}, {coord2[2]:.3f}]",
+            'Diff_Vec': f"[{diff_vec[0]:.3f}, {diff_vec[1]:.3f}, {diff_vec[2]:.3f}]",
+            'Distance': distance
+            })
     return pd.DataFrame(data).dropna()
