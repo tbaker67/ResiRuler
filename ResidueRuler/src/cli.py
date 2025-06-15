@@ -4,7 +4,7 @@ import yaml
 import pandas as pd
 from src.resiruler.structure_parsing import load_structure, extract_CA_coords
 from src.resiruler.distance_calc import get_header_indices, read_data, calc_difference_aligned
-from src.resiruler.chimera_export import draw_links
+from src.resiruler.chimera_export import draw_links,chimera_color_shift_from_csv,chimera_movement_vectors_from_csv
 from src.resiruler.plotting import plot_distance_difference, plot_movement_shift,plot_movement_vectors
 
 def default_command(args):
@@ -58,7 +58,12 @@ def movement_command(args):
     df = calc_difference_aligned(structure1, structure2, chain_mapping)
     df.to_csv(args.csv_out, index=False)
     plot_movement_shift(df) 
-    plot_movement_vectors(df)    
+    plot_movement_vectors(df)
+    chimera_color_shift_from_csv(args.csv_out, args.csv_out[:-3] + 'cxc', chain_mapping)
+    chimera_movement_vectors_from_csv(args.csv_out, args.csv_out[:-3] + 'bild') 
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="ResiRuler: Analyze residue distances from structure and annotation.")
