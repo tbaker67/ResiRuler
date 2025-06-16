@@ -58,7 +58,7 @@ def chimera_color_shift_from_csv(csv_path, output_script,chain_mapping=None):
     # Parse coordinates
     coords = df['Coord1'].apply(safe_eval)
     distances = df['Distance'].apply(safe_eval)
-    ids = df['ChainID_Resnum'].apply(safe_eval)
+    ids = df['ChainID_Resnum1']
 
     # Normalize distances
     vmin, vmax = distances.min(), distances.max()
@@ -101,7 +101,7 @@ def chimera_movement_vectors_from_csv(csv_path, output_bild):
         f.write('.scale 1 \n')
 
         for (coord1, coord2, dist) in zip(coords1, coords2, distances):
-            print(coord1)
+            #print(coord1)
             x1,y1,z1 = coord1[0],coord1[1],coord1[2]
             x2,y2,z2 = coord2[0],coord2[1],coord2[2]
             color_rgba = cmap(norm(dist))
