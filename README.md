@@ -76,7 +76,7 @@ python resiruler.py compare output1.csv output2.csv --plot-out diff_plot.png
 
 Calculate how each residue moves between two aligned conformations.
 
-You can use any preferred alignment method, however a quick and easy method is to simply load the structures into ChimeraX, and use their built in matchmaker tools to align the structures.
+You can use any preferred alignment method, however a quick and easy method is to simply load the structures into ChimeraX, use their built in matchmaker tools to align the structures, and then save the structures as new .cif files relative to the new aligned coordinates.
 
 ```bash
 python resiruler.py movement aligned1.cif aligned2.cif \
