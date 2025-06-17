@@ -7,13 +7,34 @@ import os
 def parse_coord_column(series):
     return np.array([np.array(ast.literal_eval(s)) for s in series])
 
-def plot_distance_difference(csv1_path, csv2_path, output_path="distance_diff.png", sort=True):
+
+def remap_residue(residue, chain_map):
+    if '_' not in residue:
+        return residue
+
+    try:
+        chain, resnum = residue.split('_', 1)
+        mapped_chain = chain_map[chain]  # this will raise KeyError if missing
+        return f"{mapped_chain}_{resnum}"
+    except KeyError:
+        print(f"[WARNING] Chain '{chain}' not found in chain_map. Using original ID '{residue}'.")
+        return residue
+    except Exception as e:
+        print(f"[ERROR] Failed to remap residue ID '{residue}': {e}")
+        return residue
+
+
+def plot_distance_difference(csv1_path, csv2_path, output_path="distance_diff.png", chain_map=None, sort=True):
     """
     Function to compare distance from two files and plot the differences.
     """
     
     df1 = pd.read_csv(csv1_path)
     df2 = pd.read_csv(csv2_path)
+
+    if chain_map:
+        df2['Chain1_Residue1'].apply(lambda r: remap_residue(r, chain_map))
+        df2['Chain2_Residue2'].apply(lambda r: remap_residue(r, chain_map))
 
     #Put the two tables together and calculate the distance differences
     key_cols = ['Chain1_Residue1', 'Chain2_Residue2']

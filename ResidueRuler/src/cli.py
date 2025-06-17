@@ -43,7 +43,11 @@ def compare_command(args):
     '''
     if not all(map(os.path.exists, [args.csv1, args.csv2])):
         raise FileNotFoundError("One or both comparison CSV files do not exist.")
-    plot_distance_difference(args.csv1, args.csv2, output_path=args.plot_out)
+    
+    with open(args.chain_mapping) as f:
+        chain_mapping = yaml.safe_load(f)['chain_mapping']
+    
+    plot_distance_difference(args.csv1, args.csv2, output_path=args.plot_out, chain_map=args.chain_mapping)
     print(f"[INFO] Distance difference plot saved to {args.plot_out}")
     print(f"[INFO] Distance difference sheet saved to {args.plot_out[:-3]}csv")
 
@@ -83,6 +87,7 @@ def main():
     compare_parser.add_argument('csv1', help='First CSV file to compare')
     compare_parser.add_argument('csv2', help='Second CSV file to compare')
     compare_parser.add_argument('--plot-out', default='distance_diff_plot.png', help='Output image path')
+    compare_parser.add_argument('-c', '--chain_mapping', default=None, help='Mapping for chain of one structure to its counterpart in the other structure')
     compare_parser.set_defaults(func=compare_command)
 
     # Movement Subcommand
