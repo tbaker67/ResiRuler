@@ -2,10 +2,10 @@ import argparse
 import os
 import yaml
 import pandas as pd
-from src.resiruler.structure_parsing import load_structure, extract_CA_coords
-from src.resiruler.distance_calc import get_header_indices, read_data, calc_difference_aligned
-from src.resiruler.chimera_export import draw_links,chimera_color_shift_from_csv,chimera_movement_vectors_from_csv
-from src.resiruler.plotting import plot_distance_difference, plot_movement_shift,plot_movement_vectors
+from resiruler import load_structure, extract_CA_coords
+from resiruler import get_header_indices, read_data, calc_difference_aligned
+from resiruler import draw_links,chimera_color_shift_from_csv,chimera_movement_vectors_from_csv
+from resiruler import plot_distance_difference, plot_movement_shift,plot_movement_vectors
 
 def default_command(args):
     '''
