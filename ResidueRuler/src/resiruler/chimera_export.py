@@ -3,6 +3,7 @@ import numpy as np
 import ast
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import io
 
 def safe_eval(val):
     """
@@ -31,86 +32,107 @@ def get_color(distance, thresholds):
     else:
         return "red"
 
-def draw_links(input_csv, output_script, chains=None, thresholds=None):
-    df = pd.read_csv(input_csv)
+def draw_links(df, output_script=None, chains=None, thresholds=None):
+    script = generate_chimera_link_script(df, chains=chains, thresholds=thresholds)
+
+    if output_script:
+        with open(output_script, 'w') as f:
+            f.write(script)
+
+    return script
+
+
+def generate_chimera_link_script(df, chains=None, thresholds=None):
     df["Coord1"] = df["Coord1"].apply(safe_eval)
     df["Coord2"] = df["Coord2"].apply(safe_eval)
     df["Distance"] = df["Distance"].apply(safe_eval)
 
-    with open(output_script, 'w') as out:
-        for _, row in df.iterrows():
-            coord1, coord2, dist = row['Coord1'], row['Coord2'], row['Distance']
-            if any(pd.isna([coord1, coord2, dist])):
-                continue
-            color = get_color(dist, thresholds)
-            out.write(f"shape cylinder radius 1 fromPoint {coord1[0]},{coord1[1]},{coord1[2]} "
-                      f"toPoint {coord2[0]},{coord2[1]},{coord2[2]} color {color}\n")
+    output = io.StringIO()
 
-        if chains:
-            out.write("hide\n")
-            for chain in chains:
-                out.write(f"cartoon /{chain}\n")
+    for _, row in df.iterrows():
+        coord1, coord2, dist = row['Coord1'], row['Coord2'], row['Distance']
+        if any(pd.isna([coord1, coord2, dist])):
+            continue
+        color = get_color(dist, thresholds)
+        output.write(f"shape cylinder radius 1 fromPoint {coord1[0]},{coord1[1]},{coord1[2]} "
+                     f"toPoint {coord2[0]},{coord2[1]},{coord2[2]} color {color}\n")
 
+    if chains:
+        output.write("hide\n")
+        for chain in chains:
+            output.write(f"cartoon /{chain}\n")
 
-def chimera_color_shift_from_csv(csv_path, output_script,chain_mapping=None):
-    df = pd.read_csv(csv_path)
+    return output.getvalue()
 
-    # Parse coordinates
+def chimera_color_shift_from_csv(df, output_script=None, chain_mapping=None):
+    script = generate_chimera_color_script(df, chain_mapping=chain_mapping)
+
+    if output_script:
+        with open(output_script, 'w') as f:
+            f.write(script)
+
+    return script
+
+def generate_chimera_color_script(df, chain_mapping=None):
     coords = df['Coord1'].apply(safe_eval)
     distances = df['Distance'].apply(safe_eval)
     ids = df['ChainID_Resnum1']
 
-    # Normalize distances
     vmin, vmax = distances.min(), distances.max()
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.get_cmap('plasma')  
+    cmap = plt.cm.get_cmap('plasma')
 
-    # Prepare ChimeraX script
-    with open(output_script, 'w') as f:
+    output = io.StringIO()
+    output.write('hide all \n')
 
-        f.write('hide all \n')
+    for coord, dist, id in zip(coords, distances, ids):
+        x, y, z = coord
+        r, g, b = [int(255 * c) for c in cmap(norm(dist))[:3]]
+        color_hex = f"{r:02x}{g:02x}{b:02x}"
 
-        for (coord, dist, id) in zip(coords, distances, ids):
-            x, y, z = coord
-            color_rgba = cmap(norm(dist))  # Returns (r,g,b,a)
-            r, g, b = [int(255 * c) for c in color_rgba[:3]]
-            split = id.split("_")
-            chain = split[0]
-            resnum = split[1]
-            color_hex = f"{r:02x}{g:02x}{b:02x}"
-            f.write(f"color /{chain}:{resnum} #{color_hex} \n")
-            f.write(f"show /{chain}:{resnum} \n")
-            if chain_mapping and chain in chain_mapping:
-                f.write(f"color /{chain_mapping[chain]}:{resnum} #{color_hex} \n")
-                f.write(f"show /{chain_mapping[chain]}:{resnum} \n")
+        chain, resnum = id.split("_")
 
-def chimera_movement_vectors_from_csv(csv_path, output_bild):
-    df = pd.read_csv(csv_path)
+        output.write(f"color /{chain}:{resnum} #{color_hex} \n")
+        output.write(f"show /{chain}:{resnum} \n")
+
+        if chain_mapping and chain in chain_mapping:
+            mapped_chain = chain_mapping[chain]
+            output.write(f"color /{mapped_chain}:{resnum} #{color_hex} \n")
+            output.write(f"show /{mapped_chain}:{resnum} \n")
+
+    return output.getvalue()
+
+def chimera_movement_vectors_from_csv(df, output_path=None,):
+    bild_string = generate_bild_string(df)
+
+    if output_path:
+        with open(output_path, 'w') as f:
+            f.write(bild_string)
+
+    return bild_string
+
+def generate_bild_string(df):
+    import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
+
     coords1 = df['Coord1'].apply(safe_eval)
     coords2 = df['Coord2'].apply(safe_eval)
     distances = df['Distance'].apply(safe_eval)
 
-    #Normalize Distances
     vmin, vmax = distances.min(), distances.max()
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.get_cmap('plasma')  
+    cmap = plt.cm.get_cmap('plasma')
 
-    with open(output_bild, 'w') as f:
+    output = io.StringIO()
+    output.write('.translate 0.0 0.0 0.0 \n')
+    output.write('.scale 1 \n')
 
-        f.write('.translate 0.0 0.0 0.0 \n')
-        f.write('.scale 1 \n')
+    for coord1, coord2, dist in zip(coords1, coords2, distances):
+        x1, y1, z1 = coord1
+        x2, y2, z2 = coord2
+        r, g, b = [int(255 * c) for c in cmap(norm(dist))[:3]]
+        color_hex = f"{r:02x}{g:02x}{b:02x}"
+        output.write(f'.color #{color_hex} \n')
+        output.write(f'.arrow {x1} {y1} {z1} {x2} {y2} {z2} \n')
 
-        for (coord1, coord2, dist) in zip(coords1, coords2, distances):
-            #print(coord1)
-            x1,y1,z1 = coord1[0],coord1[1],coord1[2]
-            x2,y2,z2 = coord2[0],coord2[1],coord2[2]
-            color_rgba = cmap(norm(dist))
-            r, g, b = [int(255 * c) for c in color_rgba[:3]]
-            color_hex = f"{r:02x}{g:02x}{b:02x}"
-
-            f.write(f'.color #{color_hex} \n')
-            f.write(f'.arrow {x1} {y1} {z1} {x2} {y2} {z2} \n')
-
-
-
-
+    return output.getvalue()

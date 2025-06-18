@@ -55,20 +55,18 @@ def plot_distance_difference(csv1_path, csv2_path, output_path="distance_diff.pn
     else:
         merged = merged.sort_values(by='Pair_label')
 
-    
-    
-
-    
     merged['Pair_label'] = merged['Chain1_Residue1'] + '\n' + merged['Chain2_Residue2']
 
     if plotly:
-        return plot_distance_difference_plotly(merged)
+        fig =  plot_distance_difference_plotly(merged)
+        return fig, merged
     else:
         plot_distance_difference_matplot(merged, output_path, csv1_path, csv2_path)
+        columns_to_export = ['Chain1_Residue1', 'Chain2_Residue2', 'Distance_1','Distance_2','Distance_Diff']
+        merged.to_csv(output_path[:-3] + 'csv', index=False, columns=columns_to_export)
     
 
-    columns_to_export = ['Chain1_Residue1', 'Chain2_Residue2', 'Distance_1','Distance_2','Distance_Diff']
-    merged.to_csv(output_path[:-3] + 'csv', index=False, columns=columns_to_export)
+    
 
 def plot_distance_difference_matplot(merged,output_path, csv1_path, csv2_path):
     colors = ['orange' if diff > 0 else 'blue' for diff in merged['Distance_Diff']]
@@ -91,17 +89,39 @@ def plot_distance_difference_matplot(merged,output_path, csv1_path, csv2_path):
     plt.close()
 
 def plot_distance_difference_plotly(merged):
+    merged = merged.copy()
     merged["Direction"] = merged["Distance_Diff"].apply(lambda x: "Increase" if x > 0 else "Decrease")
-    fig = px.bar(
-        merged,
-        x='Pair_label',
-        y='Distance_Diff',
-        color='Direction',
-        color_discrete_map={'Increase': 'orange', 'Decrease': 'blue'},
-        labels={'Pair_label': 'Residue Pair', 'Distance_Diff': 'Δ Distance (Å)'},
-        title="Distance Differences"
+
+    #Make line breaks work in web interface
+    merged['Stacked_Pair_label'] = merged['Pair_label'].str.replace(r'\s+', '<br>', regex=True)
+
+    
+    merged['x'] = list(range(len(merged)))
+    color_map = {'Increase': 'orange', 'Decrease': 'blue'}
+    bar_colors = merged['Direction'].map(color_map)
+
+    fig = go.Figure(data=[
+        go.Bar(
+            x=merged['x'],
+            y=merged['Distance_Diff'],
+            marker_color=bar_colors,
+            hovertext=merged['Pair_label'],
+            hoverinfo='text+y'
+        )
+    ])
+
+    fig.update_layout(
+        title="Distance Differences",
+        xaxis=dict(
+            tickmode='array',
+            tickvals=merged['x'],
+            ticktext=merged['Stacked_Pair_label'],
+            tickangle=0,
+            tickfont=dict(size=10),
+        ),
+        yaxis_title="Δ Distance (Å)"
     )
-    fig.update_layout(xaxis_tickangle=-45)
+
     return fig
     
 def plot_movement_shift(df, output_path='movement_plot.png', plotly=False):
