@@ -91,12 +91,13 @@ def plot_distance_difference_matplot(merged,output_path, csv1_path, csv2_path):
     plt.close()
 
 def plot_distance_difference_plotly(merged):
+    merged["Direction"] = merged["Distance_Diff"].apply(lambda x: "Increase" if x > 0 else "Decrease")
     fig = px.bar(
         merged,
         x='Pair_label',
         y='Distance_Diff',
-        color=merged['Distance_Diff'] > 0,
-        color_discrete_map={True: 'orange', False: 'blue'},
+        color='Direction',
+        color_discrete_map={'Increase': 'orange', 'Decrease': 'blue'},
         labels={'Pair_label': 'Residue Pair', 'Distance_Diff': 'Δ Distance (Å)'},
         title="Distance Differences"
     )
