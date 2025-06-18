@@ -2,7 +2,8 @@ from .plotting import (
     plot_distance_difference,
     plot_movement_shift,
     plot_movement_vectors,
-    
+    plotly_movement_shift,
+    plotly_movement_vectors
 )
 
 from .structure_parsing import (
@@ -28,7 +29,8 @@ __all__ = [
     'plot_distance_difference',
     'plot_movement_shift',
     'plot_movement_vectors',
-    
+    'plotly_movement_shift',
+    'plotly_movement_vectors',
     'load_structure',
     'extract_CA_coords',
     'get_coords_from_id',

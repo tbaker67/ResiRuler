@@ -20,10 +20,12 @@ def show_compare_tab():
         csv1_path = save_temp_file(csv1)
         csv2_path = save_temp_file(csv2)
         plot_path = csv1_path.replace(".csv", ".png")
+        if yaml_file:
+            yaml_path = save_temp_file(yaml_file)
+            with open(yaml_path) as f:
 
-        with open(yaml_file) as f:
-            chain_mapping = yaml.safe_load(f)['chain_mapping']
-            plot_distance_difference(csv1_path, csv2_path, output_path=plot_path)
+                chain_mapping = yaml.safe_load(f)['chain_mapping']
+                st.plotly_chart(plot_distance_difference(csv1_path,csv2_path,chain_map=chain_mapping,plotly=True))
 
-        st.image(plot_path, caption="Distance Difference Plot")
         st.success("Comparison complete.")
+        
