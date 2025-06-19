@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import yaml
-
-from ui_components.utils import save_temp_file
+import json
+from ui_components.utils import save_temp_file, json_mapping_input
 from src.resiruler import load_structure
 from src.resiruler.distance_calc import calc_difference_aligned
 from src.resiruler.plotting import plot_movement_shift, plot_movement_vectors
@@ -22,6 +22,18 @@ def show_movement_tab():
     st.session_state.setdefault("chimera_script", None)
     st.session_state.setdefault("bild_script", None)
 
+    chain_mapping = None
+
+    label = "Enter a chain mapping in the following format such that to the left of the ':' is a chain id in structure 1, and to the right is the corresponding chain id in structure 2" 
+
+    default = '''{ 
+            "AA":"ZZ",
+            "BB":"YY",
+            "CC":"XX",
+            "DD":"WW"
+    }'''
+
+    chain_mapping = json_mapping_input(label,default)
     
     if st.button("Analyze Movement"):
         if not cif1 or not cif2:
@@ -37,7 +49,8 @@ def show_movement_tab():
         structure2 = load_structure(cif2_path)
 
        
-        chain_mapping = None
+        
+        
         if yaml_file:
             yaml_path = save_temp_file(yaml_file)
             with open(yaml_path) as f:
