@@ -2,7 +2,6 @@ import streamlit as st
 import yaml
 from ui_components.utils import save_temp_file, json_mapping_input
 from src.resiruler.plotting import plot_distance_difference
-from src.resiruler.chimera_export import generate_chimera_color_script
 
 def show_compare_tab():
     st.header("Compare Two CSV Outputs")
@@ -10,7 +9,7 @@ def show_compare_tab():
    
     csv1 = st.file_uploader("Upload First CSV", type=["csv"], key="compare_csv1")
     csv2 = st.file_uploader("Upload Second CSV", type=["csv"], key="compare_csv2")
-    yaml_file = st.file_uploader("Upload Config YAML (Optional)", type=["yaml", "yml"])
+    #yaml_file = st.file_uploader("Upload Config YAML (Optional)", type=["yaml", "yml"])
 
     chain_mapping = None
 
@@ -23,7 +22,9 @@ def show_compare_tab():
             "DD":"WW"
     }'''
 
-    chain_mapping = json_mapping_input(label,default)
+    key = 'compare'
+
+    chain_mapping = json_mapping_input(label,default,key)
 
     if st.button("Compare"):
         if not csv1 or not csv2:
@@ -35,10 +36,10 @@ def show_compare_tab():
         csv2_path = save_temp_file(csv2)
 
         chain_mapping = None
-        if yaml_file:
-            yaml_path = save_temp_file(yaml_file)
-            with open(yaml_path) as f:
-                chain_mapping = yaml.safe_load(f).get("chain_mapping")
+        #if yaml_file:
+            #yaml_path = save_temp_file(yaml_file)
+            #with open(yaml_path) as f:
+                #chain_mapping = yaml.safe_load(f).get("chain_mapping")
 
         # Perform comparison
         fig, merged = plot_distance_difference(csv1_path, csv2_path, chain_map=chain_mapping, plotly=True)

@@ -15,7 +15,7 @@ def show_movement_tab():
     
     cif1 = st.file_uploader("Upload Aligned CIF #1", type=["cif"], key="aligned1")
     cif2 = st.file_uploader("Upload Aligned CIF #2", type=["cif"], key="aligned2")
-    yaml_file = st.file_uploader("Upload Chain Mapping YAML (Optional)", type=["yaml", "yml"])
+    #yaml_file = st.file_uploader("Upload Chain Mapping YAML (Optional)", type=["yaml", "yml"])
 
     
     st.session_state.setdefault("movement_df", None)
@@ -33,7 +33,8 @@ def show_movement_tab():
             "DD":"WW"
     }'''
 
-    chain_mapping = json_mapping_input(label,default)
+    key = 'movement'
+    chain_mapping = json_mapping_input(label,default,key)
     
     if st.button("Analyze Movement"):
         if not cif1 or not cif2:
@@ -51,10 +52,10 @@ def show_movement_tab():
        
         
         
-        if yaml_file:
-            yaml_path = save_temp_file(yaml_file)
-            with open(yaml_path) as f:
-                chain_mapping = yaml.safe_load(f).get("chain_mapping")
+        #if yaml_file:
+            #yaml_path = save_temp_file(yaml_file)
+            #with open(yaml_path) as f:
+                #chain_mapping = yaml.safe_load(f).get("chain_mapping")
 
         
         df = calc_difference_aligned(structure1, structure2, chain_mapping)
