@@ -3,6 +3,7 @@ from ui_components.utils import save_temp_file,json_mapping_input
 from src.resiruler.structure_parsing import load_structure, extract_CA_coords
 from src.resiruler.distance_calc import get_header_indices, read_data
 from src.resiruler.chimera_export import generate_chimera_link_script
+from ui_components.pymol_viewers import start_pymol_viewer, draw_links_pymol
 import yaml
 import pandas as pd
 from pathlib import Path
@@ -58,12 +59,6 @@ def show_run_tab():
         structure = load_structure(cif_path)
         index_map, coords = extract_CA_coords(structure)
 
-        #if yaml_file:
-            #yaml_path = save_temp_file(yaml_file)
-            #with open(yaml_path) as f:
-                #config = yaml.safe_load(f)
-                #thresholds=config['color_thresholds']
-                #chain_mapping=config['chain_mapping']
 
         df = pd.read_excel(excel_path).replace('', pd.NA).dropna(how='all').reset_index(drop=True)
         header_indices = get_header_indices(df)
@@ -73,12 +68,22 @@ def show_run_tab():
         st.success("Distance table created!")
         st.session_state.run_df = result_df
 
+        view = draw_links_pymol(result_df, start_pymol_viewer(cif_path), thresholds)
+        
+
+
         st.session_state.run_script = generate_chimera_link_script(result_df, chain_mapping, thresholds)
+
+
 
         if st.session_state.run_df is not None:
 
             st.subheader("Distance Table")
             st.dataframe(st.session_state.run_df)
+
+            st.subheader("PyMol Visualization")
+            html = view._make_html()
+            st.components.v1.html(html, height=600, width=1000)
 
             st.subheader("Download Options")
 

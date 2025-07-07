@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import yaml
 import json
+from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol
 from ui_components.utils import save_temp_file, json_mapping_input
 from src.resiruler import load_structure
 from src.resiruler.distance_calc import calc_difference_aligned
@@ -21,6 +22,8 @@ def show_movement_tab():
     st.session_state.setdefault("movement_df", None)
     st.session_state.setdefault("chimera_script", None)
     st.session_state.setdefault("bild_script", None)
+    st.session_state.setdefault("movement_view", None)
+    st.session_state.setdefault("vectors_view", None)
 
     chain_mapping = None
 
@@ -62,6 +65,8 @@ def show_movement_tab():
         st.session_state.movement_df = df
 
         
+        st.session_state.movement_view =  draw_movement_shift_pymol(df, start_pymol_viewer(cif1_path))
+        st.session_state.vector_view = draw_movement_vectors_py3dmol(df, start_pymol_viewer(cif1_path))
         st.session_state.chimera_script = generate_chimera_color_script(df)
         st.session_state.bild_script = generate_bild_string(df)
 
@@ -72,11 +77,21 @@ def show_movement_tab():
         st.subheader("Movement Data")
         st.dataframe(st.session_state.movement_df)
 
-        st.subheader("Δ Distance Plot")
-        st.plotly_chart(plot_movement_shift(st.session_state.movement_df, plotly=True))
+        #Plotly Visualization
+        #st.subheader("Δ Distance Plot")
+        #st.plotly_chart(plot_movement_shift(st.session_state.movement_df, plotly=True))
 
-        st.subheader("Movement Vectors")
-        st.plotly_chart(plot_movement_vectors(st.session_state.movement_df, plotly=True))
+        st.subheader("Δ Distance Visualization")
+        html = st.session_state.movement_view._make_html()
+        st.components.v1.html(html, height=600, width=1000)
+        
+        #Plotly Visualization
+        #st.subheader("Movement Vectors")
+        #st.plotly_chart(plot_movement_vectors(st.session_state.movement_df, plotly=True))
+
+        st.subheader("Movement Vectors Pymol Visualization")
+        vector_html = st.session_state.vector_view._make_html()
+        st.components.v1.html(vector_html, height=600, width=1000)
 
         st.subheader("Download Options")
 
