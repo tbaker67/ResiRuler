@@ -3,7 +3,7 @@ from Bio.Align import PairwiseAligner, substitution_matrices
 from Bio.PDB import MMCIFParser
 from Bio.SeqUtils import seq1
 from structure_parsing import load_structure
-from distance_calc import DistanceMatrix, CompareDistanceMatrix
+
 
 class ResidueMapper:
     def __init__(self, reference_chains, target_chains, aligner=None):
@@ -11,12 +11,12 @@ class ResidueMapper:
         self.reference_chains = reference_chains
         self.target_chains = target_chains
 
-        self.mapping = {}      # (ref_chain_id, resnum) -> (tgt_chain_id, resnum)
-        self.ref_coords = []   # List of CA coords from reference residues (joint)
-        self.tgt_coords = []   # List of CA coords from target residues (joint)
-        self.index_map = {}    # Map residue keys to global index in coords
-        self.aligned_seqA = "" # concatenated aligned seq for all chains ref
-        self.aligned_seqB = "" # concatenated aligned seq for all chains target
+        self.mapping = {}     
+        self.ref_coords = []   
+        self.tgt_coords = []   
+        self.index_map = {}    
+        self.aligned_seqA = "" 
+        self.aligned_seqB = "" 
 
         self._build_joint_mapping()
 
@@ -30,7 +30,7 @@ class ResidueMapper:
     def _extract_seq_and_res(self, chain):
         from Bio.SeqUtils import seq1
         seq = ""
-        res_list = [res for res in chain.get_residues() if res.id[0] == ' ']  # standard AA residues
+        res_list = [res for res in chain.get_residues() if res.id[0] == ' ']  
         for res in res_list:
             try:
                 seq += seq1(res.get_resname())
@@ -155,10 +155,7 @@ class StructureMapper:
         self.structure_mapper = ResidueMapper(self.ref_chains, target_chains)
     
         return self.structure_mapper
-
-    def map_ensemble(self,target_ensemble):
-        for target_id, target_structure in target_ensemble:
-            mapped_target = self.map_target_structure(target_structure)
+      
 
 
 
@@ -167,32 +164,3 @@ def calculate_percent_identity(seq1, seq2):
     aligned = sum(1 for a, b in zip(seq1, seq2) if a != '-' and b != '-')
     return 100 * matches / aligned if aligned > 0 else 0.0
 
-reference = load_structure('/Users/tbaker/Desktop/ResiRuler/aligned1.cif')
-target = load_structure('/Users/tbaker/Desktop/ResiRuler/aligned2.cif')
-target2 = load_structure('/Users/tbaker/Desktop/ResiRuler/fold_cagx_monomer_model_0.cif')
-
-mapper = StructureMapper(reference, ["AX","AY","Am"])
-
-# Create joint residue mapping for whole target structure
-residue_mapper = mapper.map_target_structure(target)
-
-# Build coordinate lists and mappings
-ref_coords, target_coords, index_map, residue_pair_map = residue_mapper.ref_coords, residue_mapper.tgt_coords, residue_mapper.index_map, residue_mapper.mapping
-
-print(f"Number of matched residues (ref coords): {len(ref_coords)}")
-print(f"Number of matched residues (target coords): {len(target_coords)}")
-print(f"Number of entries in index map: {len(index_map)}")
-print(f"Number of residue pairs in mapping: {len(residue_pair_map)}")
-
-reference_mat = DistanceMatrix(ref_coords, index_map)
-print(reference_mat.get_distance(("AX", 514), ("AY", 1898)))
-target_mat = DistanceMatrix(target_coords, index_map)
-print(target_mat.get_distance(("AX", 514), ("AY", 1898)))
-compare_mat = CompareDistanceMatrix(reference_mat, target_mat)
-print(compare_mat.get_distance_diff(("AX", 514), ("AY", 1898)))
-
-
-####THESE WILL BE OFF, CURRENTLY THE WAY SEQUENCE MATCHING IS WORKING MEAN WE SHOULD ONLY DO THIS WITH MONOMERS
-print(reference_mat.get_distance(("AX", 365), ("Am", 291)))
-print(target_mat.get_distance(("AX", 365), ("Am", 291)))
-print(compare_mat.get_distance_diff(("AX", 365), ("Am", 291)))
