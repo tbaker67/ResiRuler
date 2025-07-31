@@ -5,6 +5,8 @@ import json
 import re 
 import base64
 from pathlib import Path
+from io import BytesIO
+import zipfile
 
 def save_temp_file(uploaded_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[-1]) as tmp_file:
@@ -52,3 +54,11 @@ def embed_local_images(markdown_text, base_path):
 
     # Replace all image links in markdown
     return re.sub(r'!\[(.*?)\]\((.*?)\)', replacer, markdown_text)
+
+def create_downloadable_zip(files_dict):
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as z:
+        for filename, content in files_dict.items():
+            z.writestr(filename, content)
+    buffer.seek(0)
+    return buffer
