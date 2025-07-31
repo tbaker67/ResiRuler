@@ -1,6 +1,43 @@
 import pandas as pd
 import numpy as np
-from .structure_parsing import get_coords_from_id, extract_CA_coords
+from scipy.spatial.distance import cdist
+from .structure_parsing import get_coords_from_id
+
+class DistanceMatrix:
+    def __init__(self, coords_list, index_map):
+        self.coords = np.array(coords_list)
+        self.index_map = index_map
+        self.distmat = cdist(self.coords, self.coords, metric='euclidean')
+
+    def get_distance(self, start_key, end_key):
+        i = self.index_map.get(start_key)
+        j = self.index_map.get(end_key)
+        if i is None or j is None:
+            raise KeyError("Residue key not found.")
+        return self.distmat[i, j]
+    
+
+class CompareDistanceMatrix:
+    def __init__(self, reference_matrix,  target_matrix):
+        self.shared_keys = set(reference_matrix.index_map.keys()) & set(target_matrix.index_map.keys())
+
+        self.index_map = {key: i for i, key in enumerate(sorted(self.shared_keys))}
+        self.ref_coords = [reference_matrix.coords[reference_matrix.index_map[key]] for key in sorted(self.shared_keys)]
+        self.tgt_coords = [target_matrix.coords[target_matrix.index_map[key]] for key in sorted(self.shared_keys)]
+
+        self.ref_mat = cdist(self.ref_coords, self.ref_coords)
+        self.tgt_mat = cdist(self.tgt_coords, self.tgt_coords)
+        self.compare_mat = self.tgt_mat - self.ref_mat
+
+    def get_distance_diff(self, start_key, end_key):
+        i = self.index_map[start_key]
+        j = self.index_map[end_key]
+        return self.compare_mat[i, j]
+    
+    def get_coords(self, key):
+        return self.ref_coords[self.index_map[key]], self.tgt_coords[self.index_map[key]]
+
+
 
 
 def get_header_indices(df):
