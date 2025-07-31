@@ -4,6 +4,9 @@ import ast
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import io
+from pathlib import Path
+from io import StringIO
+from os.path import basename
 
 def safe_eval(val):
     """
@@ -43,6 +46,9 @@ def draw_links(df, output_script=None, chains=None, thresholds=None):
 
 
 def generate_chimera_link_script(df, chains=None, thresholds=None):
+    """
+    Generate a chimera cxc script to draw in links based on a desired set of thresholds
+    """
     df["Coord1"] = df["Coord1"].apply(safe_eval)
     df["Coord2"] = df["Coord2"].apply(safe_eval)
     df["Distance"] = df["Distance"].apply(safe_eval)
@@ -64,45 +70,60 @@ def generate_chimera_link_script(df, chains=None, thresholds=None):
 
     return output.getvalue()
 
-def chimera_color_shift_from_csv(df, output_script=None, chain_mapping=None):
-    script = generate_chimera_color_script(df, chain_mapping=chain_mapping)
-
-    if output_script:
-        with open(output_script, 'w') as f:
-            f.write(script)
-
-    return script
-
-def generate_chimera_color_script(df, chain_mapping=None):
-    coords = df['Coord1'].apply(safe_eval)
+def generate_cxc_scripts(df, cif1_name, cif2_name, cif1_path, cif2_path, structure_name1, structure_name2, chain_mapping=None, cxc_dir="."):
+    """
+    Generate defattr files, a vild file, and a cxc chimera script to color models corresponding to distance between corresponding residues in the reference and target structures
+    """
     distances = df['Distance'].apply(safe_eval)
     ids = df['ChainID_Resnum1']
 
+    #set up color scale
     vmin, vmax = distances.min(), distances.max()
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
     cmap = plt.cm.get_cmap('plasma')
 
-    output = io.StringIO()
-    output.write('hide all \n')
+    #set up input output paths
+    cif1_path = Path(cif1_path).resolve()
+    cif2_path = Path(cif2_path).resolve()
+    cxc_dir = Path(cxc_dir).resolve()
 
-    for coord, dist, id in zip(coords, distances, ids):
-        x, y, z = coord
-        r, g, b = [int(255 * c) for c in cmap(norm(dist))[:3]]
-        color_hex = f"{r:02x}{g:02x}{b:02x}"
+    name1 = structure_name1
+    name2 = structure_name2
 
-        chain, resnum = id.split("_")
+    defattr1 = StringIO()
+    defattr2 = StringIO()
 
-        output.write(f"color /{chain}:{resnum} #{color_hex} \n")
-        output.write(f"show /{chain}:{resnum} \n")
+    defattr1.write("attribute: distance\nrecipient: residues\n")
+    defattr2.write("attribute: distance\nrecipient: residues\n")
 
+    #write out the defattr files, basically just assign the disance as an attribute to each residue
+    for id_, dist in zip(ids, distances):
+        chain, resnum = id_.split("_")
+
+        defattr1.write(f"\t#1/{chain}:{resnum}\t{dist}\n")
         if chain_mapping and chain in chain_mapping:
             mapped_chain = chain_mapping[chain]
-            output.write(f"color /{mapped_chain}:{resnum} #{color_hex} \n")
-            output.write(f"show /{mapped_chain}:{resnum} \n")
+            defattr2.write(f"\t#2/{mapped_chain}:{resnum}\t{dist}\n")
 
-    return output.getvalue()
+    cxc = StringIO()
+    #write cxc to open up models and the def attr files
+    cxc.write(f"open {cif1_name} name {name1}\n")
+    cxc.write(f"open {cif2_name} name {name2}\n")
+    cxc.write(f"open {name1}_colors.defattr\n")
+    cxc.write(f"open {name2}_colors.defattr\n")
+    
+    #actually color the residues
+    cxc.write(f"color byattribute r:distance #1-2 target scab palette 0,#00008B:{vmax / 5:.2f},#20073a:{(2 * vmax  / 5):.2f},#6d1950:{(3 * vmax/ 5):.2f},#bd4545:{ (4 * vmax / 5):.2f},#d48849:{vmax:.2f},#f0d171\n")
+
+    #color bar/legend
+    cxc.write(f"key #00008B:0 #20073a:{vmax / 5:.2f} #6d1950:{(2 * vmax  / 5):.2f} #bd4545:{(3 * vmax/ 5):.2f} #d48849:{ (4 * vmax / 5):.2f} #f0d171:{vmax:.2f}\n")
+
+    return defattr1.getvalue(), defattr2.getvalue(), cxc.getvalue()
 
 def chimera_movement_vectors_from_csv(df, output_path=None,):
+    """
+    
+    """
     bild_string = generate_bild_string(df)
 
     if output_path:

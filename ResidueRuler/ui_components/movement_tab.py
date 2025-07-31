@@ -3,12 +3,13 @@ import pandas as pd
 import yaml
 import json
 from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol
-from ui_components.utils import save_temp_file, json_mapping_input
+from ui_components.utils import save_temp_file, json_mapping_input, create_downloadable_zip
 from src.resiruler import load_structure
 from src.resiruler.distance_calc import calc_difference_aligned
-from src.resiruler.plotting import plot_movement_shift, plot_movement_vectors
-from src.resiruler.chimera_export import generate_chimera_color_script, generate_bild_string
-
+from src.resiruler.plotting import plot_colorbar
+from src.resiruler.chimera_export import generate_cxc_scripts, generate_bild_string
+import os
+from pathlib import Path
 
 def show_movement_tab():
     st.header("Movement Analysis Between Aligned Structures")
@@ -22,8 +23,12 @@ def show_movement_tab():
     st.session_state.setdefault("movement_df", None)
     st.session_state.setdefault("chimera_script", None)
     st.session_state.setdefault("bild_script", None)
+    st.session_state.setdefault("defatt1", None)
+    st.session_state.setdefault("defatt2", None)
     st.session_state.setdefault("movement_view", None)
-    st.session_state.setdefault("vectors_view", None)
+    st.session_state.setdefault("vector_view", None)
+    st.session_state.setdefault("structure1_name", None)
+    st.session_state.setdefault("structure2_name", None)
 
     chain_mapping = None
 
@@ -54,20 +59,21 @@ def show_movement_tab():
 
        
         
-        
-        #if yaml_file:
-            #yaml_path = save_temp_file(yaml_file)
-            #with open(yaml_path) as f:
-                #chain_mapping = yaml.safe_load(f).get("chain_mapping")
-
-        
         df = calc_difference_aligned(structure1, structure2, chain_mapping)
         st.session_state.movement_df = df
 
-        
+        st.session_state.structure1_name = os.path.splitext(cif1.name)[0]
+        st.session_state.structure2_name = os.path.splitext(cif2.name)[0]
         st.session_state.movement_view =  draw_movement_shift_pymol(df, start_pymol_viewer(cif1_path))
         st.session_state.vector_view = draw_movement_vectors_py3dmol(df, start_pymol_viewer(cif1_path))
-        st.session_state.chimera_script = generate_chimera_color_script(df)
+        defatt1, defatt2, chimera_cxc = generate_cxc_scripts(df, cif1.name, cif2.name,
+                                                                           cif1_path, cif2_path, 
+                                                                           st.session_state.structure1_name, 
+                                                                           st.session_state.structure2_name, 
+                                                                           chain_mapping)
+        st.session_state.defatt1 = defatt1
+        st.session_state.defatt2 = defatt2
+        st.session_state.chimera_script = chimera_cxc
         st.session_state.bild_script = generate_bild_string(df)
 
         st.success("Movement analysis complete!")
@@ -77,35 +83,54 @@ def show_movement_tab():
         st.subheader("Movement Data")
         st.dataframe(st.session_state.movement_df)
 
-        #Plotly Visualization
-        #st.subheader("Δ Distance Plot")
-        #st.plotly_chart(plot_movement_shift(st.session_state.movement_df, plotly=True))
+        st.subheader("Color Legend (Distance Shift)")
+        min_shift = st.session_state.movement_df['Distance'].min()
+        max_shift = st.session_state.movement_df['Distance'].max()
+        fig = plot_colorbar(min_shift, max_shift, cmap_name="plasma")  
+        st.pyplot(fig)
 
-        st.subheader("Δ Distance Visualization")
+        st.subheader("Distance Shift Visualization")
         html = st.session_state.movement_view._make_html()
         st.components.v1.html(html, height=600, width=1000)
         
-        #Plotly Visualization
-        #st.subheader("Movement Vectors")
-        #st.plotly_chart(plot_movement_vectors(st.session_state.movement_df, plotly=True))
+
 
         st.subheader("Movement Vectors Pymol Visualization")
         vector_html = st.session_state.vector_view._make_html()
         st.components.v1.html(vector_html, height=600, width=1000)
 
-        st.subheader("Download Options")
 
-        csv_name = st.text_input("CSV Filename", value="residue_movement.csv")
-        chimera_name = st.text_input("Chimera Coloring Script Filename", value="chimera_script.cxc")
-        bild_name = st.text_input("Chimera Vector Script Filename", value="chimera_vectors.bild")
-    
-        st.download_button("Download CSV", data=st.session_state.movement_df.to_csv(index=False),
-                           file_name=csv_name, mime="text/csv")
+        defatt1_name = f"{st.session_state.structure1_name}_colors.defattr"
+        defatt2_name = f"{st.session_state.structure2_name}_colors.defattr"
+        chimera_filename = "chimera_coloring_script.cxc"
+        bild_filename = "colored_vectors.bild"
+        csv_filename = "residue_movement.csv"
 
-        st.download_button("Download Chimera Coloring Script",
-                           data=st.session_state.chimera_script,
-                           file_name=chimera_name, mime="text/plain")
+        # read back uploaded CIF content
+        cif1_filename = Path(cif1.name).name
+        cif2_filename = Path(cif2.name).name
+        cif1_content = cif1.getvalue().decode("utf-8")
+        cif2_content = cif2.getvalue().decode("utf-8")
 
-        st.download_button("Download Chimera Vector (BILD) Script",
-                           data=st.session_state.bild_script,
-                           file_name=bild_name, mime="text/plain")
+        # create downloadable ZIP
+        files_to_zip = {
+            chimera_filename: st.session_state.chimera_script,
+            defatt1_name:  st.session_state.defatt1,
+            defatt2_name:  st.session_state.defatt2,
+            cif1_filename: cif1_content,
+            cif2_filename: cif2_content,
+            csv_filename: st.session_state.movement_df.to_csv(index=False),
+            bild_filename: st.session_state.bild_script 
+        }
+        zip_buffer = create_downloadable_zip(files_to_zip)
+
+        st.session_state.zip_buffer = zip_buffer
+
+       
+
+        st.subheader("Download Full Data and Scripts Folder")
+
+        st.download_button("Download All as ZIP",
+                           data=st.session_state.zip_buffer,
+                           file_name="movement_analysis_package.zip",
+                           mime="application/zip")
