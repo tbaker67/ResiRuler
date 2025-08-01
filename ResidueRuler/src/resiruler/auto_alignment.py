@@ -94,7 +94,7 @@ class ChainMapper:
                     aligned_ref_coords.append(a_res["CA"].get_coord())
                     aligned_tgt_coords.append(b_res["CA"].get_coord())
                     key = (self.ref_chain.id, a_res.id[1])
-                    res_id_mapping[a_res.id] = [b_res.id]
+                    res_id_mapping[a_res.id] = b_res.id
                     index_map[key] = coord_index
                     coord_index += 1
 
@@ -230,6 +230,20 @@ class StructureMapper:
             self.matched_tgt_chains.add(tgt_id)
             print(f"Matched {ref_id} → {tgt_id} with score {scores[(i, j)]:.4f}")
 
+    def map_chains_explicit(self, explicit_chain_mapping):
+        for ref_chain_id, tgt_chain_id in explicit_chain_mapping.items():
+            ref_chain = self.ref_structure[ref_chain_id]
+            tgt_chain = self.tgt_structure[tgt_chain_id]
+
+            self.matched_ref_chains.add(ref_chain_id)
+            self.matched_tgt_chains.add(tgt_chain_id)
+
+            ref_seq = extract_seq_from_chain(ref_chain)
+            tgt_seq = extract_seq_from_chain(tgt_chain)
+
+            alignment = self.aligner.align(ref_seq, tgt_seq)[0]
+
+            self.chain_mappings[ref_chain_id] = ChainMapper(ref_chain, ref_seq, tgt_chain, tgt_seq, alignment)
 
 
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):
@@ -284,10 +298,10 @@ def filter_and_write_aligned_maps(ref_cif, tgt_cif, identity_threshold=95.0):
 
     #Get matches residues and chains 
     for chain_id, cm in mapper.chain_mappings.items():
-        for ref_res_id, tgt_res_ids in cm.res_id_map.items():
+        for ref_res_id, tgt_res_id in cm.res_id_map.items():
             matched_ref_residues.add((cm.ref_chain.id, ref_res_id))
-            for tgt_id in tgt_res_ids:
-                matched_tgt_residues.add((cm.tgt_chain.id, tgt_id))
+            
+            matched_tgt_residues.add((cm.tgt_chain.id, tgt_res_id))
 
         matched_ref_chains.add(cm.ref_chain.id)
         matched_tgt_chains.add(cm.tgt_chain.id)

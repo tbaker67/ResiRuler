@@ -5,7 +5,8 @@ import json
 from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol
 from ui_components.utils import save_temp_file, json_mapping_input, create_downloadable_zip
 from src.resiruler import load_structure
-from src.resiruler.distance_calc import calc_difference_aligned
+from src.resiruler.auto_alignment import StructureMapper
+from src.resiruler.distance_calc import calc_difference_aligned, calc_difference_from_mapper
 from src.resiruler.plotting import plot_colorbar
 from src.resiruler.chimera_export import generate_cxc_scripts, generate_bild_string
 import os
@@ -29,6 +30,7 @@ def show_movement_tab():
     st.session_state.setdefault("vector_view", None)
     st.session_state.setdefault("structure1_name", None)
     st.session_state.setdefault("structure2_name", None)
+    st.session_state.setdefault("structure_mapping", None)
 
     chain_mapping = None
 
@@ -58,8 +60,10 @@ def show_movement_tab():
         structure2 = load_structure(cif2_path)
 
        
+        st.session_state.structure_mapping = StructureMapper(structure1, structure2)
         
-        df = calc_difference_aligned(structure1, structure2, chain_mapping)
+        df = calc_difference_from_mapper(st.session_state.structure_mapping, chain_mapping)
+
         st.session_state.movement_df = df
 
         st.session_state.structure1_name = os.path.splitext(cif1.name)[0]

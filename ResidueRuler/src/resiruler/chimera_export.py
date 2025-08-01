@@ -49,8 +49,8 @@ def generate_chimera_link_script(df, chains=None, thresholds=None):
     """
     Generate a chimera cxc script to draw in links based on a desired set of thresholds
     """
-    df["Coord1"] = df["Coord1"].apply(safe_eval)
-    df["Coord2"] = df["Coord2"].apply(safe_eval)
+    df["Coord1"] = df["Coord1"]
+    df["Coord2"] = df["Coord2"]
     df["Distance"] = df["Distance"].apply(safe_eval)
 
     output = io.StringIO()
@@ -136,8 +136,8 @@ def generate_bild_string(df):
     import matplotlib.colors as mcolors
     import matplotlib.pyplot as plt
 
-    coords1 = df['Coord1'].apply(safe_eval)
-    coords2 = df['Coord2'].apply(safe_eval)
+    coords1 = df['Coord1']
+    coords2 = df['Coord2']
     distances = df['Distance'].apply(safe_eval)
 
     vmin, vmax = distances.min(), distances.max()

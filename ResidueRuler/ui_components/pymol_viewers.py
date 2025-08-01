@@ -29,8 +29,8 @@ def draw_links_pymol(df, view, thresholds=None):
     for chain_id in all_chains:
         view.setStyle({'chain': chain_id}, {'cartoon': {'colorscheme': 'chainid'}})
 
-    starts = df['Coord1'].apply(safe_eval)
-    ends = df['Coord2'].apply(safe_eval)
+    starts = df['Coord1']
+    ends = df['Coord2']
     distances = float(df['Distance'])
     for  start,end,dist in zip(starts,ends,distances):
         view.addCylinder({
@@ -48,7 +48,7 @@ def draw_links_pymol(df, view, thresholds=None):
 
 def draw_movement_shift_pymol(df, view):
     df = df.dropna()
-    coords=df['Coord1'].apply(safe_eval)
+    coords=df['Coord1']
     distances=df['Distance']
     view.setStyle({}, {})
 
@@ -74,8 +74,8 @@ def draw_movement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5):
     """
     df = df.dropna(subset=['Coord1', 'Coord2', 'Distance'])
 
-    coords1 = df['Coord1'].apply(safe_eval)
-    coords2 = df['Coord2'].apply(safe_eval)
+    coords1 = df['Coord1']
+    coords2 = df['Coord2']
     distances = df['Distance'].astype(float)
 
     view.setStyle({}, {})  
