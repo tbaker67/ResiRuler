@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from scipy.spatial.distance import cdist
 from .structure_parsing import get_coords_from_id
+from .auto_alignment import StructureMapper, ChainMapper
 
 class DistanceMatrix:
     def __init__(self, coords_list, index_map):
@@ -152,3 +153,44 @@ def calc_difference_aligned(structure1, structure2, chain_mapping=None):
             'Distance': distance
             })
     return pd.DataFrame(data).dropna()
+
+def calc_difference_from_mapper(structure_mapper,explicit_chain_mapping):
+    if explicit_chain_mapping:
+        structure_mapper.map_chain_explicit(explicit_chain_mapping)
+
+    else:
+        structure_mapper.map_chains(threshold=95)
+    data = []
+
+    for chain_mapping in structure_mapper.chain_mappings.values():
+        ref_id = chain_mapping.ref_chain.id
+        tgt_id = chain_mapping.tgt_chain.id
+
+        chain_mapping.calc_aligned_coords()
+        for ref_res_id, tgt_res_id in chain_mapping.res_id_map.items():
+            ref_resnum = ref_res_id[1]
+            tgt_resnum = tgt_res_id[1]
+
+            ref_coord = chain_mapping.ref_chain[ref_res_id]['CA'].get_coord()
+            tgt_coord = chain_mapping.tgt_chain[tgt_res_id]['CA'].get_coord()
+
+            diff_vec = tgt_coord - ref_coord
+
+            distance = np.linalg.norm(diff_vec)
+
+            data.append({
+            'ChainID_Resnum1': f'{ref_id}_{ref_resnum}',
+            'ChainID_Resnum2': f'{tgt_id}_{tgt_resnum}',
+            'Coord1': ref_coord.tolist(),
+            'Coord2': tgt_coord.tolist(),
+            'Diff_Vec': diff_vec.tolist(),
+            'Distance': distance
+            })
+    return pd.DataFrame(data).dropna()
+
+
+
+
+
+
+    pass
