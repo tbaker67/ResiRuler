@@ -7,6 +7,8 @@ import base64
 from pathlib import Path
 from io import BytesIO
 import zipfile
+from src.resiruler.auto_alignment import StructureMapper
+from src.resiruler.structure_parsing import load_structure
 
 def save_temp_file(uploaded_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[-1]) as tmp_file:
@@ -62,3 +64,23 @@ def create_downloadable_zip(files_dict):
             z.writestr(filename, content)
     buffer.seek(0)
     return buffer
+
+def create_mapper(cif1, cif2, chain_mapping):
+    if not cif1 or not cif2:
+        raise ValueError("Both cif1 and cif2 must be provided.")
+    cif1_path = save_temp_file(cif1)
+    cif2_path = save_temp_file(cif2)
+
+    structure1 = load_structure(cif1_path)
+    structure2 = load_structure(cif2_path)
+
+    mapper = StructureMapper(structure1, structure2)
+
+    if chain_mapping:
+        mapper.map_chains_explicit(chain_mapping)
+    else:
+        mapper.map_chains(threshold=95)
+    
+    return mapper
+    
+        

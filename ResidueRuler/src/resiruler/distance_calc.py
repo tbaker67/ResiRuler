@@ -2,41 +2,78 @@ import pandas as pd
 import numpy as np
 from scipy.spatial.distance import cdist
 from .structure_parsing import get_coords_from_id
-from .auto_alignment import StructureMapper, ChainMapper
 
 class DistanceMatrix:
     def __init__(self, coords_list, index_map):
         self.coords = np.array(coords_list)
-        self.index_map = index_map
-        self.distmat = cdist(self.coords, self.coords, metric='euclidean')
+        self.index_map = dict(sorted(index_map.items())) #(Chain_ID, resnum) -> index
+        self.mat = cdist(self.coords, self.coords, metric='euclidean')
 
     def get_distance(self, start_key, end_key):
         i = self.index_map.get(start_key)
         j = self.index_map.get(end_key)
         if i is None or j is None:
             raise KeyError("Residue key not found.")
-        return self.distmat[i, j]
+        return self.mat[i, j]
+    
+    def convert_to_df(self):
+        keys = list(self.index_map.keys())
+        n = len(keys)
+
+        #prevent duplicates in datatable
+        triu_i, triu_j = np.triu_indices(n, k=1)
+
+        df = pd.DataFrame({
+            'start_key': [f"{keys[i][0]}-{keys[i][1]}" for i in triu_i],
+            'end_key': [f"{keys[j][0]}-{keys[j][1]}" for j in triu_j],
+            'start_coord': [self.coords[i].tolist() for i in triu_i],  
+            'end_coord': [self.coords[j].tolist() for j in triu_j],
+            'distance': self.mat[triu_i, triu_j]
+        })
+
+        return df
     
 
 class CompareDistanceMatrix:
-    def __init__(self, reference_matrix,  target_matrix):
+    def __init__(self, reference_matrix,  target_matrix, res_id_mapping):
         self.shared_keys = set(reference_matrix.index_map.keys()) & set(target_matrix.index_map.keys())
-
+        self.res_id_mapping = res_id_mapping
         self.index_map = {key: i for i, key in enumerate(sorted(self.shared_keys))}
         self.ref_coords = [reference_matrix.coords[reference_matrix.index_map[key]] for key in sorted(self.shared_keys)]
         self.tgt_coords = [target_matrix.coords[target_matrix.index_map[key]] for key in sorted(self.shared_keys)]
 
         self.ref_mat = cdist(self.ref_coords, self.ref_coords)
         self.tgt_mat = cdist(self.tgt_coords, self.tgt_coords)
-        self.compare_mat = self.tgt_mat - self.ref_mat
+        self.mat = self.tgt_mat - self.ref_mat #comparison matrix
 
     def get_distance_diff(self, start_key, end_key):
         i = self.index_map[start_key]
         j = self.index_map[end_key]
-        return self.compare_mat[i, j]
+        return self.mat[i, j]
     
     def get_coords(self, key):
         return self.ref_coords[self.index_map[key]], self.tgt_coords[self.index_map[key]]
+
+    def convert_to_df(self):
+
+        keys = list(self.shared_keys)
+        n = len(keys)
+
+        triu_i, triu_j = np.triu_indices(n, k=1)
+
+        df = pd.DataFrame({
+            'start_key_ref': [f"{keys[i][0]}-{keys[i][1]}" for i in triu_i],
+            'end_key_ref': [f"{keys[j][0]}-{keys[j][1]}" for j in triu_j],
+            'start_coord_ref': [self.ref_coords[i].tolist() for i in triu_i],  # convert np arrays to lists
+            'end_coord_ref': [self.ref_coords[j].tolist() for j in triu_j],
+            'start_key_tgt': [f"{self.res_id_mapping[keys[i]][0]}-{self.res_id_mapping[keys[i]][1]}" for i in triu_i],
+            'end_key_tgt': [f"{self.res_id_mapping[keys[j]][0]}-{self.res_id_mapping[keys[j]][1]}" for j in triu_j],
+            'start_coord_tgt': [self.tgt_coords[i].tolist() for i in triu_i],  # convert np arrays to lists
+            'end_coord_tgt': [self.tgt_coords[j].tolist() for j in triu_j],
+            '∆ distance': self.mat[triu_i, triu_j]
+        })
+
+        return df
 
 
 
@@ -168,29 +205,21 @@ def calc_difference_from_mapper(structure_mapper,explicit_chain_mapping):
 
         chain_mapping.calc_aligned_coords()
         for ref_res_id, tgt_res_id in chain_mapping.res_id_map.items():
-            ref_resnum = ref_res_id[1]
-            tgt_resnum = tgt_res_id[1]
 
-            ref_coord = chain_mapping.ref_chain[ref_res_id]['CA'].get_coord()
-            tgt_coord = chain_mapping.tgt_chain[tgt_res_id]['CA'].get_coord()
+
+            ref_coord = chain_mapping.get_ref_coord(ref_res_id[0], ref_res_id[1])
+            tgt_coord = chain_mapping.get_tgt_coord(ref_res_id[0], ref_res_id[1])
 
             diff_vec = tgt_coord - ref_coord
 
             distance = np.linalg.norm(diff_vec)
 
             data.append({
-            'ChainID_Resnum1': f'{ref_id}_{ref_resnum}',
-            'ChainID_Resnum2': f'{tgt_id}_{tgt_resnum}',
+            'ChainID_Resnum1': f'{ref_id}_{ref_res_id[1]}',
+            'ChainID_Resnum2': f'{tgt_id}_{tgt_res_id[1]}',
             'Coord1': ref_coord.tolist(),
             'Coord2': tgt_coord.tolist(),
             'Diff_Vec': diff_vec.tolist(),
             'Distance': distance
             })
     return pd.DataFrame(data).dropna()
-
-
-
-
-
-
-    pass

@@ -3,7 +3,7 @@ import pandas as pd
 import yaml
 import json
 from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol
-from ui_components.utils import save_temp_file, json_mapping_input, create_downloadable_zip
+from ui_components.utils import json_mapping_input, create_downloadable_zip, create_mapper
 from src.resiruler import load_structure
 from src.resiruler.auto_alignment import StructureMapper
 from src.resiruler.distance_calc import calc_difference_aligned, calc_difference_from_mapper
@@ -16,9 +16,9 @@ def show_movement_tab():
     st.header("Movement Analysis Between Aligned Structures")
 
     
-    cif1 = st.file_uploader("Upload Aligned CIF #1", type=["cif"], key="aligned1")
-    cif2 = st.file_uploader("Upload Aligned CIF #2", type=["cif"], key="aligned2")
-    #yaml_file = st.file_uploader("Upload Chain Mapping YAML (Optional)", type=["yaml", "yml"])
+    cif1 = st.file_uploader("Upload Aligned CIF #1", type=["cif"], key="movement_aligned1")
+    cif2 = st.file_uploader("Upload Aligned CIF #2", type=["cif"], key="movement_aligned2")
+    
 
     
     st.session_state.setdefault("movement_df", None)
@@ -47,38 +47,28 @@ def show_movement_tab():
     chain_mapping = json_mapping_input(label,default,key)
     
     if st.button("Analyze Movement"):
-        if not cif1 or not cif2:
-            st.error("Please upload both structure files.")
-            return
+       
+        try:
+            st.session_state.structure_mapping = create_mapper(cif1, cif2, chain_mapping)
+            
+        except ValueError as e:
+            print(f"Error creating mapper: {e}")
 
         
-        cif1_path = save_temp_file(cif1)
-        cif2_path = save_temp_file(cif2)
-
-       
-        structure1 = load_structure(cif1_path)
-        structure2 = load_structure(cif2_path)
-
-       
-        st.session_state.structure_mapping = StructureMapper(structure1, structure2)
-        
-        df = calc_difference_from_mapper(st.session_state.structure_mapping, chain_mapping)
-
-        st.session_state.movement_df = df
+        st.session_state.movement_df = calc_difference_from_mapper(st.session_state.structure_mapping, chain_mapping)
 
         st.session_state.structure1_name = os.path.splitext(cif1.name)[0]
         st.session_state.structure2_name = os.path.splitext(cif2.name)[0]
-        st.session_state.movement_view =  draw_movement_shift_pymol(df, start_pymol_viewer(cif1_path))
-        st.session_state.vector_view = draw_movement_vectors_py3dmol(df, start_pymol_viewer(cif1_path))
-        defatt1, defatt2, chimera_cxc = generate_cxc_scripts(df, cif1.name, cif2.name,
-                                                                           cif1_path, cif2_path, 
+        st.session_state.movement_view =  draw_movement_shift_pymol(st.session_state.movement_df, start_pymol_viewer(cif1))
+        st.session_state.vector_view = draw_movement_vectors_py3dmol(st.session_state.movement_df, start_pymol_viewer(cif2))
+        defatt1, defatt2, chimera_cxc = generate_cxc_scripts(st.session_state.movement_df, cif1.name, cif2.name,
                                                                            st.session_state.structure1_name, 
                                                                            st.session_state.structure2_name, 
                                                                            chain_mapping)
         st.session_state.defatt1 = defatt1
         st.session_state.defatt2 = defatt2
         st.session_state.chimera_script = chimera_cxc
-        st.session_state.bild_script = generate_bild_string(df)
+        st.session_state.bild_script = generate_bild_string(st.session_state.movement_df)
 
         st.success("Movement analysis complete!")
 
