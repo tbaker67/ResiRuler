@@ -179,7 +179,7 @@ def plot_interactive_contact_map(matrix, threshold=None, title=None, min=None, m
         y=[f"{chain_resnum2[0]}-{chain_resnum2[1]}" for chain_resnum2 in index_map.keys()],
         hoverinfo="text",
         text=hovertext,
-        colorscale="RdBu", 
+        colorscale="RdBu_r" if isinstance(matrix, CompareDistanceMatrix) else "viridis", 
         zmid=0.0 if isinstance(matrix, CompareDistanceMatrix) else None,
         zmin=min if min is not None else np.nanmin(mat),
         zmax=max if max is not None else np.nanmax(mat),

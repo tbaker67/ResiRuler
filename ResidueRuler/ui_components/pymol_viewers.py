@@ -18,17 +18,18 @@ def start_pymol_viewer(cif_file):
 
 def draw_links_pymol(df, view, thresholds=None):
     df = df.dropna()
-    chains1 = df['Chain1_Residue1'].str.split('_').str[0]
-    chains2 = df['Chain2_Residue2'].str.split('_').str[0]
+    chains1 = df['ChainID_Resnum1'].str.split('-').str[0]
+    chains2 = df['ChainID_Resnum2'].str.split('-').str[0]
     all_chains = pd.concat([chains1, chains2]).unique()
 
     view.setStyle({}, {}) 
+
     for chain_id in all_chains:
         view.setStyle({'chain': chain_id}, {'cartoon': {'colorscheme': 'chainid'}})
 
     starts = df['Coord1']
     ends = df['Coord2']
-    distances = float(df['Distance'])
+    distances = df['Distance']
     for  start,end,dist in zip(starts,ends,distances):
         view.addCylinder({
             'start': {'x': float(start[0]), 'y': float(start[1]), 'z': float(start[2])},

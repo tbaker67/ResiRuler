@@ -70,9 +70,9 @@ def generate_chimera_link_script(df, chains=None, thresholds=None):
 
     return output.getvalue()
 
-def generate_cxc_scripts(df, cif1_name, cif2_name, cif1_path, cif2_path, structure_name1, structure_name2, chain_mapping=None, cxc_dir="."):
+def generate_cxc_scripts(df, cif1_name, cif2_name, structure_name1, structure_name2, chain_mapping=None):
     """
-    Generate defattr files, a vild file, and a cxc chimera script to color models corresponding to distance between corresponding residues in the reference and target structures
+    Generate defattr files, a bild file, and a cxc chimera script to color models corresponding to distance between corresponding residues in the reference and target structures
     """
     distances = df['Distance'].apply(safe_eval)
     ids = df['ChainID_Resnum1']
@@ -82,10 +82,6 @@ def generate_cxc_scripts(df, cif1_name, cif2_name, cif1_path, cif2_path, structu
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
     cmap = plt.cm.get_cmap('plasma')
 
-    #set up input output paths
-    cif1_path = Path(cif1_path).resolve()
-    cif2_path = Path(cif2_path).resolve()
-    cxc_dir = Path(cxc_dir).resolve()
 
     name1 = structure_name1
     name2 = structure_name2

@@ -10,9 +10,6 @@ from .structure_parsing import (
 )
 
 from .distance_calc import (
-    get_header_indices,
-    read_data,
-    calc_difference_aligned,
     calc_difference_from_mapper
 )
 
@@ -31,9 +28,7 @@ __all__ = [
     'plot_distance_difference',
     'load_structure',
     'get_coords_from_id',
-    'get_header_indices',
-    'read_data',
-    'calc_difference_aligned',
+    'calc_difference_from_mapper',
     'draw_links',
     'chimera_movement_vectors_from_csv'
     'StructureMapper'
