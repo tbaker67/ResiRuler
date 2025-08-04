@@ -1,12 +1,7 @@
 import streamlit as st
-import pandas as pd
-import yaml
-import json
 from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol
 from ui_components.utils import json_mapping_input, create_downloadable_zip, create_mapper
-from src.resiruler import load_structure
-from src.resiruler.auto_alignment import StructureMapper
-from src.resiruler.distance_calc import calc_difference_aligned, calc_difference_from_mapper
+from src.resiruler.distance_calc import calc_difference_from_mapper
 from src.resiruler.plotting import plot_colorbar
 from src.resiruler.chimera_export import generate_cxc_scripts, generate_bild_string
 import os

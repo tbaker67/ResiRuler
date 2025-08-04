@@ -4,7 +4,6 @@ import streamlit as st
 import json
 import re 
 import base64
-from pathlib import Path
 from io import BytesIO
 import zipfile
 from src.resiruler.auto_alignment import StructureMapper
@@ -82,5 +81,3 @@ def create_mapper(cif1, cif2, chain_mapping):
         mapper.map_chains(threshold=95)
     
     return mapper
-    
-        

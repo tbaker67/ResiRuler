@@ -46,7 +46,8 @@ def extract_seq_from_chain(chain):
 
 def extract_residues_from_structure(structure, chains=None):
     """
-    Get the coordinates of CA atoms and create a mapping from the chain and residue number to where they are stored in the list
+    Get a list of all residues in a strucutre.
+    Optionally use a subset of chains from which to pull residues from
     """
 
     #Error handling
@@ -82,6 +83,10 @@ def extract_residues_by_type(structure, residue_type, chains):
     
 
 def convert_to_CA_coords_list(res_list):
+    """
+    Convert a list of residues into a list full of the coordinates for each CA atom
+    Also create an index map the maps (Chain ID, Resnum) -> index in corrdinate list
+    """
     coords = []
     id_to_indices = {}
     index = 0

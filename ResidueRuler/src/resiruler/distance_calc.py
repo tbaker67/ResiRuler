@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from scipy.spatial.distance import cdist
-from .structure_parsing import get_coords_from_id
 
 class DistanceMatrix:
     def __init__(self, coords_list, index_map):
