@@ -83,8 +83,16 @@ def show_run_tab():
     st.session_state.setdefault("link_pymol", None)
 
     if st.button("Draw Links"):
+        #Account for reversals (A-1 | A-2) vs (A-2 | A-1)
+        reversed_links = link_selections.rename(columns={
+        'ChainID_Resnum1': 'ChainID_Resnum2',
+        'ChainID_Resnum2': 'ChainID_Resnum1'
+        })
+
+        augmented_links = pd.concat([link_selections, reversed_links], ignore_index=True).drop_duplicates()
+
+        links_df = st.session_state.run_df.merge(augmented_links, on=['ChainID_Resnum1', 'ChainID_Resnum2'])
         
-        links_df = st.session_state.run_df.merge(link_selections, on=['ChainID_Resnum1', 'ChainID_Resnum2'])
         link_script = generate_chimera_link_script(links_df, thresholds=thresholds)
 
         st.session_state.draw_links_clicked = True
