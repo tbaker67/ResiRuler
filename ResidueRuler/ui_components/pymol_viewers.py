@@ -7,31 +7,29 @@ from collections import defaultdict
 
 from src.resiruler.chimera_export import get_color, safe_eval
 
-def start_pymol_viewer(file_path):
-    with open(file_path) as f:
-        structure = f.read()
-
-    view = py3Dmol.view(width=800, height=600)
-    view.addModel(structure, 'cif')
-
-    view.setStyle({}, {'cartoon': {'color': 'spectrum'}})
-
-    view.zoomTo()  
-    return view
+def start_pymol_viewer(cif_file):
+    if cif_file is not None:
+        cif_str = cif_file.read().decode("utf-8")  # decode BytesIO to str
+        view = py3Dmol.view(width=800, height=800)
+        view.addModel(cif_str, 'cif')
+        view.setStyle({'cartoon': {'color': 'spectrum'}})
+        view.zoomTo()
+        return view
 
 def draw_links_pymol(df, view, thresholds=None):
     df = df.dropna()
-    chains1 = df['Chain1_Residue1'].str.split('_').str[0]
-    chains2 = df['Chain2_Residue2'].str.split('_').str[0]
+    chains1 = df['ChainID_Resnum1'].str.split('-').str[0]
+    chains2 = df['ChainID_Resnum2'].str.split('-').str[0]
     all_chains = pd.concat([chains1, chains2]).unique()
 
     view.setStyle({}, {}) 
+
     for chain_id in all_chains:
         view.setStyle({'chain': chain_id}, {'cartoon': {'colorscheme': 'chainid'}})
 
-    starts = df['Coord1'].apply(safe_eval)
-    ends = df['Coord2'].apply(safe_eval)
-    distances = float(df['Distance'])
+    starts = df['Coord1']
+    ends = df['Coord2']
+    distances = df['Distance']
     for  start,end,dist in zip(starts,ends,distances):
         view.addCylinder({
             'start': {'x': float(start[0]), 'y': float(start[1]), 'z': float(start[2])},
@@ -47,26 +45,30 @@ def draw_links_pymol(df, view, thresholds=None):
     return view
 
 def draw_movement_shift_pymol(df, view):
-    df = df.dropna()
-    coords=df['Coord1'].apply(safe_eval)
-    distances=df['Distance']
-    view.setStyle({}, {})
+    df = df.dropna(subset=['ChainID_Resnum1', 'Distance'])
 
-    vmin, vmax = distances.min(), distances.max()
+    vmin, vmax = df['Distance'].min(), df['Distance'].max()
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
     cmap = plt.cm.get_cmap('plasma')
 
-    for coord, dist in zip(coords,distances):
-        x, y, z = coord
+    view.setStyle({}, {})  # reset styles
+
+    for _, row in df.iterrows():
+        # Parse chain and residue number from 'C_58'
+        chain, resi = row['ChainID_Resnum1'].split('_')
+
+        dist = row['Distance']
         r, g, b = [int(255 * c) for c in cmap(norm(dist))[:3]]
-        color_hex = f"{r:02x}{g:02x}{b:02x}"
-        view.addSphere({
-            'center': {'x': x, 'y': y, 'z': z},
-            'color': f'rgb({r},{g},{b})',  
-            'radius': 3
+        color_str = f'rgb({r},{g},{b})'
+
+        # Apply cartoon color to the residue
+        view.setStyle({'chain': chain, 'resi': str(resi)}, {
+            'cartoon': {'color': color_str}
         })
+
     view.zoomTo()
     return view
+
 
 def draw_movement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5):
     """
@@ -74,8 +76,8 @@ def draw_movement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5):
     """
     df = df.dropna(subset=['Coord1', 'Coord2', 'Distance'])
 
-    coords1 = df['Coord1'].apply(safe_eval)
-    coords2 = df['Coord2'].apply(safe_eval)
+    coords1 = df['Coord1']
+    coords2 = df['Coord2']
     distances = df['Distance'].astype(float)
 
     view.setStyle({}, {})  

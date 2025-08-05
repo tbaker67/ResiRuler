@@ -4,9 +4,8 @@ import numpy as np
 import ast
 import os
 import plotly.graph_objects as go
-import plotly.express as px
-from plotly.colors import sample_colorscale
-import matplotlib.colors as mcolors
+from src.resiruler.distance_calc import CompareDistanceMatrix
+
 
 def parse_coord_column(series):
     return np.array([np.array(ast.literal_eval(s)) for s in series])
@@ -133,3 +132,65 @@ def plot_distance_difference_plotly(merged):
     )
 
     return fig
+
+def get_hovertext(matrix):
+    mat, index_map = matrix.mat, matrix.index_map
+    hovertext = []
+    for i, chain_resnum1 in enumerate(index_map.keys()):
+        row = []
+        for j, chain_resnum2 in enumerate(index_map.keys()):
+            #Below the threshold, no need to add hover text
+            if np.isnan(mat[i, j]):
+                row.append("")
+                continue
+            
+            res_labels = f"<b>{chain_resnum1[0]}-{chain_resnum1[1]}</b> ↔ <b>{chain_resnum2[0]}-{chain_resnum2[1]}</b>" ## EX: AX-145 <-> CX-145
+            value = mat[i, j]
+            text = None
+            if isinstance(matrix, CompareDistanceMatrix):
+                #TODO: Consider adding additional information to hovertext?
+                text = (
+                    f"{res_labels}<br>"
+                    f"ΔDistance: {value:.2f} Å"
+                )
+            
+            else:
+                text = (
+                    f"{res_labels}<br>"
+                    f"Distance: {value:.2f} Å"
+                )
+            row.append(text)
+        hovertext.append(row)
+    return hovertext
+
+def plot_interactive_contact_map(matrix, threshold=None, title=None, min=None, max=None):
+    mat, index_map = matrix.mat, matrix.index_map
+    if threshold is not None:
+        mat = np.where(mat < threshold, mat, np.nan)
+    
+    hovertext = get_hovertext(matrix)
+
+    fig = go.Figure(data=go.Heatmap(
+        z=mat,
+        x=[f"{chain_resnum1[0]}-{chain_resnum1[1]}" for chain_resnum1 in index_map.keys()],
+        y=[f"{chain_resnum2[0]}-{chain_resnum2[1]}" for chain_resnum2 in index_map.keys()],
+        hoverinfo="text",
+        text=hovertext,
+        colorscale="RdBu_r" if isinstance(matrix, CompareDistanceMatrix) else "viridis", 
+        zmid=0.0 if isinstance(matrix, CompareDistanceMatrix) else None,
+        zmin=min if min is not None else np.nanmin(mat),
+        zmax=max if max is not None else np.nanmax(mat),
+        colorbar=dict(title="ΔDistance (Å)" if isinstance(matrix, CompareDistanceMatrix) else "Distance (Å)")
+    ))
+
+    fig.update_layout(
+        title=title or "Residue Contact Map",
+        xaxis_title="Residue",
+        yaxis_title="Residue",
+        autosize=False,
+        width=800,
+        height=800
+    )
+
+    return fig
+

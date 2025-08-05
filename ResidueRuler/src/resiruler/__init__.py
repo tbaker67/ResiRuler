@@ -1,43 +1,35 @@
 from .plotting import (
     plot_distance_difference,
-    plot_movement_shift,
-    plot_movement_vectors,
-    plotly_movement_shift,
-    plotly_movement_vectors
+    
 )
 
 from .structure_parsing import (
     load_structure,
-    extract_CA_coords,
     get_coords_from_id,
+
 )
 
 from .distance_calc import (
-    get_header_indices,
-    read_data,
-    calc_difference_aligned,
+    calc_difference_from_mapper
 )
 
 from .chimera_export import (
-    draw_links,
-    chimera_color_shift_from_csv,
-    chimera_movement_vectors_from_csv
+    generate_chimera_link_script,
+    generate_bild_string,
+    generate_cxc_scripts
 
+)
+
+from .auto_alignment import (
+    StructureMapper
 )
 
 __all__ = [
     'plot_distance_difference',
-    'plot_movement_shift',
-    'plot_movement_vectors',
-    'plotly_movement_shift',
-    'plotly_movement_vectors',
     'load_structure',
-    'extract_CA_coords',
     'get_coords_from_id',
-    'get_header_indices',
-    'read_data',
-    'calc_difference_aligned',
+    'calc_difference_from_mapper',
     'draw_links',
-    'chimera_color_shift_from_csv',
     'chimera_movement_vectors_from_csv'
+    'StructureMapper'
 ]

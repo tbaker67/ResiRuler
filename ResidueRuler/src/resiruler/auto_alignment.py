@@ -3,6 +3,7 @@ from Bio.Align import PairwiseAligner, substitution_matrices
 from Bio.PDB import MMCIFParser, MMCIFIO, Structure, Model
 from io import StringIO
 from .structure_parsing import extract_res_from_chain, extract_seq_from_chain
+from .distance_calc import DistanceMatrix, CompareDistanceMatrix
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
@@ -93,15 +94,30 @@ class ChainMapper:
                 if "CA" in a_res and "CA" in b_res:
                     aligned_ref_coords.append(a_res["CA"].get_coord())
                     aligned_tgt_coords.append(b_res["CA"].get_coord())
-                    key = (self.ref_chain.id, a_res.id[1])
-                    res_id_mapping[a_res.id] = [b_res.id]
-                    index_map[key] = coord_index
+                    ref_id = (self.ref_chain.id, a_res.id[1])
+                    tgt_id = (self.tgt_chain.id, b_res.id[1])
+                    res_id_mapping[ref_id] = tgt_id
+                    index_map[ref_id] = coord_index
                     coord_index += 1
 
         self.aligned_ref_coords = aligned_ref_coords
         self.aligned_tgt_coords = aligned_tgt_coords
         self.index_map = index_map
         self.res_id_map = res_id_mapping
+
+    def get_ref_coord(self, chain, resnum):
+        """
+        Gets coordinate of residue in reference structure based on (Chain, Resnum) identifier
+        """
+        return self.aligned_ref_coords[self.index_map[(chain, resnum)]]
+
+    def get_tgt_coord(self, chain,resnum):
+        """
+        Gets coordinate of residue in reference structure based on (Chain, Resnum) identifier
+        We should use the reference (Chain, Resnum) identifier as that is what is in the index map, and the aligned coordinates ensure we get a nice 1-to-1 mapping
+        """
+        return self.aligned_tgt_coords[self.index_map[(chain,resnum)]]
+
 
 
         
@@ -230,6 +246,63 @@ class StructureMapper:
             self.matched_tgt_chains.add(tgt_id)
             print(f"Matched {ref_id} → {tgt_id} with score {scores[(i, j)]:.4f}")
 
+    def map_chains_explicit(self, explicit_chain_mapping):
+        for ref_chain_id, tgt_chain_id in explicit_chain_mapping.items():
+            ref_chain = self.ref_structure[ref_chain_id]
+            tgt_chain = self.tgt_structure[tgt_chain_id]
+
+            self.matched_ref_chains.add(ref_chain_id)
+            self.matched_tgt_chains.add(tgt_chain_id)
+
+            ref_seq = extract_seq_from_chain(ref_chain)
+            tgt_seq = extract_seq_from_chain(tgt_chain)
+
+            alignment = self.aligner.align(ref_seq, tgt_seq)[0]
+
+            self.chain_mappings[ref_chain_id] = ChainMapper(ref_chain, ref_seq, tgt_chain, tgt_seq, alignment)
+
+    def calc_matrices (self, selected_chains=None):
+        """
+        Create DistanceMatrix and CompareDistanceMatrix for the reference and targets.
+        """
+        coords_ref = []
+        coords_tgt = []
+        index_map = {} 
+        res_id_map = {}
+
+        coord_index = 0
+        for chain_id, cm in self.chain_mappings.items():
+            if selected_chains and chain_id not in selected_chains:
+                print(f"[INFO] Skipping chain {chain_id} (not in selected_chains)")
+                continue
+
+            for key, idx in cm.index_map.items():
+                try:
+                    ref_coord = cm.aligned_ref_coords[idx]
+                    tgt_coord = cm.aligned_tgt_coords[idx]
+                except IndexError:
+                    print(f"[WARN] Index {idx} out of bounds in chain {chain_id}")
+                    continue
+
+                coords_ref.append(ref_coord)
+                coords_tgt.append(tgt_coord)
+                index_map[key] = coord_index
+                coord_index += 1
+            
+            res_id_map = res_id_map | cm.res_id_map
+
+        if len(coords_ref) == 0:
+            raise ValueError("No aligned coordinates were found. Check selected chains and mapping.")
+
+        coords_ref = np.array(coords_ref)
+        coords_tgt = np.array(coords_tgt)
+
+        if coords_ref.ndim != 2 or coords_ref.shape[1] != 3:
+            raise ValueError(f"ref coords shape: {coords_ref.shape} — expected (N, 3)")
+
+        ref_dm = DistanceMatrix(coords_ref, index_map)
+        tgt_dm = DistanceMatrix(coords_tgt, index_map)
+        return ref_dm, tgt_dm, CompareDistanceMatrix(ref_dm, tgt_dm, res_id_map)
 
 
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):
@@ -284,10 +357,10 @@ def filter_and_write_aligned_maps(ref_cif, tgt_cif, identity_threshold=95.0):
 
     #Get matches residues and chains 
     for chain_id, cm in mapper.chain_mappings.items():
-        for ref_res_id, tgt_res_ids in cm.res_id_map.items():
+        for ref_res_id, tgt_res_id in cm.res_id_map.items():
             matched_ref_residues.add((cm.ref_chain.id, ref_res_id))
-            for tgt_id in tgt_res_ids:
-                matched_tgt_residues.add((cm.tgt_chain.id, tgt_id))
+            
+            matched_tgt_residues.add((cm.tgt_chain.id, tgt_res_id))
 
         matched_ref_chains.add(cm.ref_chain.id)
         matched_tgt_chains.add(cm.tgt_chain.id)
