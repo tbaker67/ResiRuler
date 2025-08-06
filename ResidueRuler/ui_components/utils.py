@@ -102,3 +102,24 @@ def chain_selector_ui(structure, label="Select Chains to Visualize", default_all
         return selected
     else:
         return None
+    
+def load_structure_if_new(cif_file, name_key, struct_key):
+    if cif_file is None:
+        return None  # Nothing uploaded
+
+
+    if (name_key not in st.session_state 
+        or st.session_state[name_key] != cif_file.name):
+        
+        cif_path = save_temp_file(cif_file)
+        structure = load_structure(cif_path)
+
+
+        st.session_state[struct_key] = structure
+        st.session_state[name_key] = cif_file.name
+    else:
+        # same file
+        structure = st.session_state.get(struct_key)
+
+    return structure
+    

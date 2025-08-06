@@ -1,11 +1,12 @@
 import streamlit as st
-from ui_components.utils import save_temp_file,json_mapping_input,chain_selector_ui, create_downloadable_zip
-from src.resiruler.structure_parsing import load_structure, extract_residues_from_structure, convert_to_CA_coords_list
+from ui_components.utils import json_mapping_input,chain_selector_ui, create_downloadable_zip, load_structure_if_new
+from src.resiruler.structure_parsing import extract_residues_from_structure, convert_to_CA_coords_list
 from src.resiruler.distance_calc import DistanceMatrix
 from src.resiruler.plotting import plot_interactive_contact_map
 from src.resiruler.chimera_export import generate_chimera_link_script
 from ui_components.pymol_viewers import start_pymol_viewer, draw_links_pymol
 import pandas as pd
+from pathlib import Path
 
 def show_run_tab():
     cif_file = st.file_uploader("Upload Structure File (.cif)", type=["cif"])
@@ -16,22 +17,8 @@ def show_run_tab():
     
     st.markdown("### Select Chains to Visualize")
 
-    structure = None
+    structure = load_structure_if_new(cif_file, name_key="name1", struct_key="structure1")
 
-    if cif_file is not None:
-        #check for new uploads
-        if ("uploaded_file_name" not in st.session_state
-            or st.session_state.uploaded_file_name != cif_file.name):
-            
-
-            cif_path = save_temp_file(cif_file)
-            structure = load_structure(cif_path)
-            st.session_state.structure = structure
-            st.session_state.uploaded_file_name = cif_file.name
-        else:
-            # if same file, no need to actually load it back in
-            structure = st.session_state.get("structure", None)
-    
     selected_chains = chain_selector_ui(structure)
     
     threshold = None
@@ -126,6 +113,29 @@ def show_run_tab():
                            data = st.session_state.link_script,
                            file_name = "link_script.cxc",
                            mime="text/plain")
+        
+        chimera_filename = "chimera_link_script.cxc"
+        cif_filename = Path(cif_file.name).name
+        cif_content = cif_file.getvalue().decode("utf-8")
+        csv_filename = "run.csv"
+
+
+        files_to_zip = {
+            chimera_filename: st.session_state.link_script,
+            cif_filename: cif_content,
+            csv_filename: st.session_state.run_df.to_csv(index=False),   
+        }
+
+        zip_buffer = create_downloadable_zip(files_to_zip)
+
+        st.session_state.run_zip_buffer = zip_buffer
+
+        st.subheader("Download Full Data and Scripts Folder")
+
+        st.download_button("Download All as ZIP",
+                           data=st.session_state.zip_buffer,
+                           file_name="run_analysis_package.zip",
+                           mime="application/zip")
 
 
 
