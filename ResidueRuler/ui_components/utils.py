@@ -81,3 +81,24 @@ def create_mapper(cif1, cif2, chain_mapping):
         mapper.map_chains(threshold=95)
     
     return mapper
+
+def chain_selector_ui(structure, label="Select Chains to Visualize", default_all=True):
+    """
+    Display a Streamlit multiselect box for choosing chains from a structure.
+    """
+    if structure is None:
+        st.warning("No structure loaded. Please upload a file first.")
+        return None
+
+    chain_options = sorted({chain.id for model in structure for chain in model})
+    multiselect_options = ["All"] + chain_options
+
+    default_selection = ["All"] if default_all else []
+    selected = st.multiselect(label, multiselect_options, default=default_selection)
+
+    if "All" in selected:
+        return chain_options
+    elif selected:
+        return selected
+    else:
+        return None

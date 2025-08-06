@@ -15,19 +15,28 @@ class DistanceMatrix:
             raise KeyError("Residue key not found.")
         return self.mat[i, j]
     
-    def convert_to_df(self):
+    def convert_to_df(self, threshold=None):
         keys = list(self.index_map.keys())
         n = len(keys)
 
         #prevent duplicates in datatable
         triu_i, triu_j = np.triu_indices(n, k=1)
 
+        distances = self.mat[triu_i, triu_j]
+
+        # allow for thresholding to save memory
+        if threshold is not None:
+            mask = distances > threshold
+            triu_i = triu_i[mask]
+            triu_j = triu_j[mask]
+            distances = distances[mask]
+
         df = pd.DataFrame({
             'ChainID_Resnum1': [f"{keys[i][0]}-{keys[i][1]}" for i in triu_i],
             'ChainID_Resnum2': [f"{keys[j][0]}-{keys[j][1]}" for j in triu_j],
             'Coord1': [self.coords[i].tolist() for i in triu_i],  
             'Coord2': [self.coords[j].tolist() for j in triu_j],
-            'Distance': self.mat[triu_i, triu_j]
+            'Distance': distances
         })
 
         return df

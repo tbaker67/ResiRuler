@@ -1,5 +1,5 @@
 import streamlit as st
-from ui_components.utils import save_temp_file,json_mapping_input
+from ui_components.utils import save_temp_file,json_mapping_input,chain_selector_ui, create_downloadable_zip
 from src.resiruler.structure_parsing import load_structure, extract_residues_from_structure, convert_to_CA_coords_list
 from src.resiruler.distance_calc import DistanceMatrix
 from src.resiruler.plotting import plot_interactive_contact_map
@@ -14,38 +14,48 @@ def show_run_tab():
     st.session_state.setdefault("run_contact_map", None)
     st.session_state.setdefault("run_matrix", None)
     
-    default_data = pd.DataFrame({
-        "Chain": ["A"], 
-    })
-
     st.markdown("### Select Chains to Visualize")
-    edited_df = st.data_editor(default_data, num_rows="dynamic", use_container_width=True)
 
-    #Allow for selection based on input into table, and handle blank table 
-    selected_chains = edited_df['Chain'].dropna().astype(str).str.strip()
-    selected_chains = selected_chains[selected_chains != ""].tolist()
-    if not selected_chains:
-        selected_chains = None
+    structure = None
 
+    if cif_file is not None:
+        #check for new uploads
+        if ("uploaded_file_name" not in st.session_state
+            or st.session_state.uploaded_file_name != cif_file.name):
+            
+
+            cif_path = save_temp_file(cif_file)
+            structure = load_structure(cif_path)
+            st.session_state.structure = structure
+            st.session_state.uploaded_file_name = cif_file.name
+        else:
+            # if same file, no need to actually load it back in
+            structure = st.session_state.get("structure", None)
+    
+    selected_chains = chain_selector_ui(structure)
+    
+    threshold = None
+    threshold_input = st.text_input("Distance threshold (Å)", value="10.0")
+    try:
+        threshold = float(threshold_input)
+    except ValueError:
+        st.error("Please enter a valid number.")
+        threshold = None
 
     
     if st.button("Run"):
-        if cif_file is not None:
-            cif_path = save_temp_file(cif_file)
-            structure = load_structure(cif_path)
             res_list = extract_residues_from_structure(structure, selected_chains)
             coords_list, index_map = convert_to_CA_coords_list(res_list)
             matrix = DistanceMatrix(coords_list, index_map)
-            df = matrix.convert_to_df()
-            contact_map = plot_interactive_contact_map(matrix, title="Contact Map")
+            df = matrix.convert_to_df(threshold)
+            contact_map = plot_interactive_contact_map(matrix, title="Contact Map", threshold=threshold)
 
             # save important data for plotting/tables
             st.session_state.run_clicked = True
             st.session_state.run_matrix = matrix
             st.session_state.run_df = df
             st.session_state.run_contact_map = contact_map
-        else:
-            st.error("No File Uploaded")
+        
 
 
     # Show results if run was successful
@@ -54,7 +64,8 @@ def show_run_tab():
         st.plotly_chart(st.session_state.run_contact_map)
 
         st.markdown("### Distance Data")
-        st.dataframe(st.session_state.run_df, use_container_width=True)
+        #get rid of coord columns to save memory for display
+        st.dataframe(st.session_state.run_df.drop(columns=['Coord1', 'Coord2']), use_container_width=True)
 
     st.markdown("### Edit or Paste Desired Residue Pairs")
     default_pairs = pd.DataFrame({
