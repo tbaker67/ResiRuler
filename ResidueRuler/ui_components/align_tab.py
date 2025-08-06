@@ -7,9 +7,7 @@ import py3Dmol
 from Bio.PDB import MMCIFParser, MMCIFIO
 from ui_components.utils import save_temp_file
 from usalign_wrapper import run_usalign_matrix_only
-from src.resiruler.superimposing import apply_transform
 from src.resiruler.auto_alignment import filter_and_write_aligned_maps
-from src.resiruler.structure_parsing import load_structure
 
 def apply_transform(structure, rotation, translation):
     """Apply rotation and translation to atomic coordinates."""
