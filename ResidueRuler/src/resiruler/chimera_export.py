@@ -75,7 +75,8 @@ def generate_cxc_scripts(df, cif1_name, cif2_name, structure_name1, structure_na
     Generate defattr files, a bild file, and a cxc chimera script to color models corresponding to distance between corresponding residues in the reference and target structures
     """
     distances = df['Distance'].apply(safe_eval)
-    ids = df['ChainID_Resnum1']
+    ids_ref = df['ChainID_Resnum1']
+    ids_tgt = df['ChainID_Resnum2']
 
     #set up color scale
     vmin, vmax = distances.min(), distances.max()
@@ -93,13 +94,12 @@ def generate_cxc_scripts(df, cif1_name, cif2_name, structure_name1, structure_na
     defattr2.write("attribute: distance\nrecipient: residues\n")
 
     #write out the defattr files, basically just assign the disance as an attribute to each residue
-    for id_, dist in zip(ids, distances):
-        chain, resnum = id_.split("_")
+    for id_ref, id_tgt, dist in zip(ids_ref, ids_tgt, distances):
+        chain1, resnum1 = id_ref.split("_")
+        chain2, resnum2 = id_tgt.split("_")
 
-        defattr1.write(f"\t#1/{chain}:{resnum}\t{dist}\n")
-        if chain_mapping and chain in chain_mapping:
-            mapped_chain = chain_mapping[chain]
-            defattr2.write(f"\t#2/{mapped_chain}:{resnum}\t{dist}\n")
+        defattr1.write(f"\t#1/{chain1}:{resnum1}\t{dist}\n")
+        defattr2.write(f"\t#2/{chain2}:{resnum2}\t{dist}\n")
 
     cxc = StringIO()
     #write cxc to open up models and the def attr files
