@@ -1,0 +1,16 @@
+name: resiruler
+channels:
+  - defaults
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - usalign          
+  - numpy
+  - pandas
+  - streamlit
+  - plotly
+  - py3Dmol
+  - matplotlib
+  - biopython
+  - scipy
