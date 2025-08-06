@@ -90,35 +90,50 @@ def compute_distance(coord1, coord2):
     return np.linalg.norm(np.array(coord1) - np.array(coord2))
 
 
-def calc_difference_from_mapper(structure_mapper,explicit_chain_mapping):
+def calc_difference_from_mapper(structure_mapper,explicit_chain_mapping=None):
     if explicit_chain_mapping:
         structure_mapper.map_chain_explicit(explicit_chain_mapping)
 
     else:
         structure_mapper.map_chains(threshold=95)
-    data = []
+    
+    ref_ids = []
+    tgt_ids = []
+    ref_coords = []
+    tgt_coords = []
+    diffs = []
+    distances = []
 
     for chain_mapping in structure_mapper.chain_mappings.values():
         ref_id = chain_mapping.ref_chain.id
         tgt_id = chain_mapping.tgt_chain.id
 
         chain_mapping.calc_aligned_coords()
+
         for ref_res_id, tgt_res_id in chain_mapping.res_id_map.items():
-
-
-            ref_coord = chain_mapping.get_ref_coord(ref_res_id[0], ref_res_id[1])
-            tgt_coord = chain_mapping.get_tgt_coord(ref_res_id[0], ref_res_id[1])
+            try:
+                ref_coord = chain_mapping.get_ref_coord(ref_res_id[0], ref_res_id[1])
+                tgt_coord = chain_mapping.get_tgt_coord(ref_res_id[0], ref_res_id[1])
+            except (KeyError, IndexError):
+                continue
 
             diff_vec = tgt_coord - ref_coord
+            dist = np.linalg.norm(diff_vec)
 
-            distance = np.linalg.norm(diff_vec)
+            ref_ids.append(f"{ref_id}_{ref_res_id[1]}")
+            tgt_ids.append(f"{tgt_id}_{tgt_res_id[1]}")
+            ref_coords.append(ref_coord)
+            tgt_coords.append(tgt_coord)
+            diffs.append(diff_vec)
+            distances.append(dist)
 
-            data.append({
-            'ChainID_Resnum1': f'{ref_id}_{ref_res_id[1]}',
-            'ChainID_Resnum2': f'{tgt_id}_{tgt_res_id[1]}',
-            'Coord1': ref_coord.tolist(),
-            'Coord2': tgt_coord.tolist(),
-            'Diff_Vec': diff_vec.tolist(),
-            'Distance': distance
-            })
-    return pd.DataFrame(data).dropna()
+    df = pd.DataFrame({
+        "ChainID_Resnum1": ref_ids,
+        "ChainID_Resnum2": tgt_ids,
+        "Coord1": np.array(ref_coords).tolist(),
+        "Coord2": np.array(tgt_coords).tolist(),
+        "Diff_Vec": np.array(diffs).tolist(),
+        "Distance": distances
+    })
+
+    return df.dropna()
