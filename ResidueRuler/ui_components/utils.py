@@ -64,21 +64,16 @@ def create_downloadable_zip(files_dict):
     buffer.seek(0)
     return buffer
 
-def create_mapper(cif1, cif2, chain_mapping):
-    if not cif1 or not cif2:
-        raise ValueError("Both cif1 and cif2 must be provided.")
-    cif1_path = save_temp_file(cif1)
-    cif2_path = save_temp_file(cif2)
-
-    structure1 = load_structure(cif1_path)
-    structure2 = load_structure(cif2_path)
-
+def create_mapper(structure1, structure2, chain_mapping, threshold):
+    if not structure1 or not structure2:
+        raise ValueError("Missing a structure.")
+    
     mapper = StructureMapper(structure1, structure2)
 
     if chain_mapping:
         mapper.map_chains_explicit(chain_mapping)
     else:
-        mapper.map_chains(threshold=95)
+        mapper.map_chains(threshold=threshold)
     
     return mapper
 

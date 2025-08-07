@@ -1,6 +1,6 @@
 import streamlit as st
 from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol
-from ui_components.utils import json_mapping_input, create_downloadable_zip, create_mapper
+from ui_components.utils import json_mapping_input, create_downloadable_zip, create_mapper, load_structure_if_new, get_threshold
 from src.resiruler.distance_calc import calc_difference_from_mapper
 from src.resiruler.plotting import plot_colorbar
 from src.resiruler.chimera_export import generate_cxc_scripts, generate_bild_string
@@ -40,11 +40,16 @@ def show_movement_tab():
 
     key = 'movement'
     chain_mapping = json_mapping_input(label,default,key)
+
+    structure1 = load_structure_if_new(cif1, name_key="movement_name1", struct_key="movement_structure1")
+    structure2 = load_structure_if_new(cif2, name_key="movement_name2", struct_key="movement_structure2")
     
+    pct_id_threshold = get_threshold("Set a minimum Pct Identity Threshold for matching corresponding chains together", "95.0")
+
     if st.button("Analyze Movement"):
        
         try:
-            st.session_state.structure_mapping = create_mapper(cif1, cif2, chain_mapping)
+            st.session_state.structure_mapping = create_mapper(structure1, structure2, chain_mapping, threshold=pct_id_threshold)
             
         except ValueError as e:
             print(f"Error creating mapper: {e}")
@@ -113,13 +118,13 @@ def show_movement_tab():
         }
         zip_buffer = create_downloadable_zip(files_to_zip)
 
-        st.session_state.zip_buffer = zip_buffer
+        st.session_state.movement_zip_buffer = zip_buffer
 
        
 
         st.subheader("Download Full Data and Scripts Folder")
 
         st.download_button("Download All as ZIP",
-                           data=st.session_state.zip_buffer,
-                           file_name="movement_analysis_package.zip",
+                           data=st.session_state.movement_zip_buffer,
+                           file_name="resi_ruler_movement_output.zip",
                            mime="application/zip")
