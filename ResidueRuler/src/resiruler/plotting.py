@@ -133,36 +133,6 @@ def plot_distance_difference_plotly(merged):
 
     return fig
 
-def get_hovertext(matrix):
-    mat, index_map = matrix.mat, matrix.index_map
-    hovertext = []
-    for i, chain_resnum1 in enumerate(index_map.keys()):
-        row = []
-        for j, chain_resnum2 in enumerate(index_map.keys()):
-            #Below the threshold, no need to add hover text
-            if np.isnan(mat[i, j]):
-                row.append("")
-                continue
-            
-            res_labels = f"<b>{chain_resnum1[0]}-{chain_resnum1[1]}</b> ↔ <b>{chain_resnum2[0]}-{chain_resnum2[1]}</b>" ## EX: AX-145 <-> CX-145
-            value = mat[i, j]
-            text = None
-            if isinstance(matrix, CompareDistanceMatrix):
-                #TODO: Consider adding additional information to hovertext?
-                text = (
-                    f"{res_labels}<br>"
-                    f"Distance: {value:.2f} Å"
-                )
-            
-            else:
-                text = (
-                    f"{res_labels}<br>"
-                    f"Distance: {value:.2f} Å"
-                )
-            row.append(text)
-        hovertext.append(row)
-    return hovertext
-
 def plot_interactive_contact_map(matrix, lower_threshold=None, upper_threshold=None, title=None, min=None, max=None):
     mat, index_map = matrix.mat, matrix.index_map
     if lower_threshold is not None and upper_threshold is not None:
