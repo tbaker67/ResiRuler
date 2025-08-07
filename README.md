@@ -50,12 +50,12 @@ A successful launch will provide this message in the terminal. Using the network
 
 The "Run" tab is designed for use of a single cif structure file
 
-After uploading a CIF file, you can specify what chains in your structure you'd like to actually calculate distances for by simply selecting them from the dropdown menu. Do note that for very larger structures you will likely want to select a subset of chains and/or adjust the upper and lower thresholds, as otherwise it may be too computationally to intensive for less powerful machines.
+After uploading a CIF file, you can specify what chains in your structure you'd like to actually calculate distances for by simply selecting them from the dropdown menu. Do note that for very larger structures you will likely want to select a subset of chains and/or adjust the upper and lower thresholds, as otherwise it may be too computationally intensive for less powerful machines.
 
 
 ![Run Page 1](ResidueRuler/images/run/Run_Page1.png)
 
-After hitting "Run" a contact map as well as table of all inter-residue distances will be calculated 
+After hitting "Run" a contact map as well as a table of all inter-residue distances will be calculated 
 
 ![Run Page 2](ResidueRuler/images/run/Run_Page2.png)
 
