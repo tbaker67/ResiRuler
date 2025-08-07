@@ -24,7 +24,7 @@ class ChainMapper:
         self.aligned_tgt_seq = alignment[1]
 
         self.index_map = {} # (Chain_ID, Resnum) -> index
-        self.res_id_map = {} # Ref_Res_ID -> Tgt_Res_ID
+        self.res_id_map = {} # (Chain_ID, Resnum) -> (Chain_ID, Resnum)
 
         self.aligned_ref_coords = []
         self.aligned_tgt_coords = []
@@ -190,7 +190,8 @@ class StructureMapper:
                 potential_map = ChainMapper(ref_chain, ref_seq, tgt_chain, tgt_seq, alignment)
 
                 percent_identity = potential_map.calc_percent_identity()
-                print(f"Testing chains {ref_chain.id} vs {tgt_chain.id} — %ID: {percent_identity:.2f}")
+                #print(f"Testing chains {ref_chain.id} vs {tgt_chain.id} — %ID: {percent_identity:.2f}")
+                
 
                 if percent_identity < threshold:
                     continue
@@ -322,7 +323,7 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
 
         new_chain = chain.__class__(chain.id)
         for res in chain.get_residues():
-            key = (chain.id, res.id)
+            key = (chain.id, res.id[1])
             #No residue match or not filtering residues
             if matched_residues is not None and key not in matched_residues:
                 continue
@@ -358,9 +359,9 @@ def filter_and_write_aligned_maps(ref_cif, tgt_cif, identity_threshold=95.0):
     #Get matches residues and chains 
     for chain_id, cm in mapper.chain_mappings.items():
         for ref_res_id, tgt_res_id in cm.res_id_map.items():
-            matched_ref_residues.add((cm.ref_chain.id, ref_res_id))
+            matched_ref_residues.add((ref_res_id)) # (chain, resnum)
             
-            matched_tgt_residues.add((cm.tgt_chain.id, tgt_res_id))
+            matched_tgt_residues.add((tgt_res_id)) # (chain, resnum)
 
         matched_ref_chains.add(cm.ref_chain.id)
         matched_tgt_chains.add(cm.tgt_chain.id)
