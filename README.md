@@ -75,7 +75,7 @@ And will get a Pymol Visualization Preview, Distance table for selected pairs, a
 
 ## 'The Align Tab'
 
-The "Align" tab allows for the alignment of any two genetically similar molecules. It performs alignment using [USalign's](https://www.nature.com/articles/s41592-022-01585-1) multimer alignment algorithm (MMalign)
+The "Align" tab allows for the alignment of any two genetically similar molecules. It performs alignment using [USalign's](https://www.nature.com/articles/s41592-022-01585-1) multimer alignment algorithm (MMalign).
 
 Start by uploading files
 
@@ -84,7 +84,7 @@ Start by uploading files
 You'll get preview of the alignment
 ![Align Page 2](ResidueRuler/images/align/Align_Page2.png)
 
-There is also an option to "clean" the alignment to get rid of unmatched chains or residues, and those CIF files can be downloaded for future use
+There is also an option to "clean" the alignment to get rid of unmatched chains or residues, and those CIF files can be downloaded for future use.
 ![Align Page 3](ResidueRuler/images/align/Align_Page3.png)
 
 
@@ -94,17 +94,17 @@ There is also an option to "clean" the alignment to get rid of unmatched chains 
 
 ---
 
-This tab is where you can compare inter-residue distances between (currently) two structures with multi-comparisons currently in progress
+This tab is where you can compare inter-residue distances between (currently) two structures with multi-comparisons currently in progress.
 
-It offers auto-matching of chains between the two structures as well as the ability, to set an explicit mapping
-If you use the auto-matching with multiple chains of the same sequence in each structure, it is important that you supply aligned structures either from the "Align" job, or any other alignment software of your choice
+It offers auto-matching of chains between the two structures as well as the ability, to set an explicit mapping.
+If you use the auto-matching with multiple chains of the same sequence in each structure, it is important that you supply aligned structures either from the "Align" job, or any other alignment software of your choice.
 
 ![Compare Tab 1](ResidueRuler/images/compare/Compare_Page1.png)
 
-You'll have the option to specify which chains to look at, in addition to setting a minimum percent identity threshold which is used when matching chains together
+You'll have the option to specify which chains to look at, in addition to setting a minimum percent identity threshold which is used when matching chains together.
 ![Compare Tab 2](ResidueRuler/images/compare/Compare_Page2.png)
 
-This will produce contact maps for both structures provided, as well as a distance difference map which is essentially a subtraction of the two contact maps
+This will produce contact maps for both structures provided, as well as a distance difference map which is essentially a subtraction of the two contact maps.
 ![Compare Tab 3](ResidueRuler/images/compare/Compare_Page3.png)
 
 
@@ -116,19 +116,19 @@ This will produce contact maps for both structures provided, as well as a distan
 
 Calculate how each residue moves between two aligned conformations via calculting the distance between corresponding residues in the two structures, (with the ability for multiple comparisons coming soon).
 
-Here, you must use aligned structures/models, but can choose any preffered method
+Here, you must use aligned structures/models, but can choose any preffered method.
 
 ![Movement Tab 1](ResidueRuler/images/movement/Movement_Page1.png)
 
-The Data Table will have the distance as well as the vector describing how each residue is moving between the two structures
+The Data Table will have the distance as well as the vector describing how each residue is moving between the two structures.
 ![Movement Tab 2](ResidueRuler/images/movement/Movement_Page2.png)
 
-There will also be a color bar, which corresponds to the PyMol Viewer Preview Visualizations
+There will also be a color bar, which corresponds to the PyMol Viewer Preview Visualizations.
 ![Movement Tab 3](ResidueRuler/images/movement/Movement_Page3.png)
 
 ![Movement Tab 4](ResidueRuler/images/movement/Movement_Page4.png)
 
-There will be an option to download a zipped folder containing these file contents
+There will be an option to download a zipped folder containing these file contents.
 - Opening the .cxc script calls the defattr files and will color in atoms into chimeraX, where you can then adjust as you see fit
 - Opening the .bild file will put the vector representation into ChimeraX
 - The csv contains all the associated data
@@ -140,7 +140,7 @@ There will be an option to download a zipped folder containing these file conten
 
 ![Example Movement Visualiation](ResidueRuler/images/movement/Chimera_Movemement_Map.png)
 
-This can actually be recolored inside of ChimeraX, by going to tools->depiction->Render/Select by Attribute
+The coloring gradientcan be recolored inside of ChimeraX, by going to tools->depiction->Render/Select by Attribute
 
 ![Movement Edit 1](ResidueRuler/images/movement/Movement_Edit1.png)
 
