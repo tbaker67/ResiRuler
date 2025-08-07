@@ -123,3 +123,10 @@ def load_structure_if_new(cif_file, name_key, struct_key):
 
     return structure
     
+def get_threshold(label, default):
+    threshold_input = st.text_input(label, value=default)
+    try:
+        return float(threshold_input)
+    except ValueError:
+        st.error("Please enter a valid number.")
+        return None

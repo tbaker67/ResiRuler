@@ -1,5 +1,5 @@
 import streamlit as st
-from ui_components.utils import json_mapping_input,chain_selector_ui, create_downloadable_zip, load_structure_if_new
+from ui_components.utils import json_mapping_input,chain_selector_ui, create_downloadable_zip, load_structure_if_new, get_threshold
 from src.resiruler.structure_parsing import extract_residues_from_structure, convert_to_CA_coords_list
 from src.resiruler.distance_calc import DistanceMatrix
 from src.resiruler.plotting import plot_interactive_contact_map
@@ -21,38 +21,34 @@ def show_run_tab():
 
     selected_chains = chain_selector_ui(structure)
     
-    threshold = None
-    threshold_input = st.text_input("Distance threshold (Å)", value="10.0")
-    try:
-        threshold = float(threshold_input)
-    except ValueError:
-        st.error("Please enter a valid number.")
-        threshold = None
+    lower_threshold = get_threshold("Minimum Distance Threshold", "10.0")
 
+    upper_threshold = get_threshold("Maximum Distance Threshold", "100.0")
     
     if st.button("Run"):
             res_list = extract_residues_from_structure(structure, selected_chains)
             coords_list, index_map = convert_to_CA_coords_list(res_list)
             matrix = DistanceMatrix(coords_list, index_map)
-            df = matrix.convert_to_df(threshold)
-            contact_map = plot_interactive_contact_map(matrix, title="Contact Map", threshold=threshold)
+            df = matrix.convert_to_df(lower_threshold, upper_threshold)
+            contact_map = plot_interactive_contact_map(matrix, title="Contact Map", lower_threshold=lower_threshold,
+                                                       upper_threshold=upper_threshold)
 
             # save important data for plotting/tables
             st.session_state.run_clicked = True
             st.session_state.run_matrix = matrix
-            st.session_state.run_df = df
-            st.session_state.run_contact_map = contact_map
+            #st.session_state.run_df = df
+           #st.session_state.run_contact_map = contact_map
         
 
 
     # Show results if run was successful
-    if st.session_state.run_clicked and st.session_state.run_df is not None:
+    if st.session_state.run_clicked:
         st.markdown("### Contact Map")
-        st.plotly_chart(st.session_state.run_contact_map)
+        st.plotly_chart(contact_map, use_container_width=False)
 
         st.markdown("### Distance Data")
         #get rid of coord columns to save memory for display
-        st.dataframe(st.session_state.run_df.drop(columns=['Coord1', 'Coord2']), use_container_width=True)
+        st.dataframe(df.drop(columns=['Coord1', 'Coord2']), use_container_width=True)
 
     st.markdown("### Edit or Paste Desired Residue Pairs")
     default_pairs = pd.DataFrame({

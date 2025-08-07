@@ -4,7 +4,7 @@ from scipy.spatial.distance import cdist
 
 class DistanceMatrix:
     def __init__(self, coords_list, index_map):
-        self.coords = np.array(coords_list)
+        self.coords = np.array(coords_list, dtype=np.float32)
         self.index_map = dict(sorted(index_map.items())) #(Chain_ID, resnum) -> index
         self.mat = cdist(self.coords, self.coords, metric='euclidean')
 
@@ -15,7 +15,7 @@ class DistanceMatrix:
             raise KeyError("Residue key not found.")
         return self.mat[i, j]
     
-    def convert_to_df(self, threshold=None):
+    def convert_to_df(self, lower_threshold=None, upper_threshold=None):
         keys = list(self.index_map.keys())
         n = len(keys)
 
@@ -25,8 +25,8 @@ class DistanceMatrix:
         distances = self.mat[triu_i, triu_j]
 
         # allow for thresholding to save memory
-        if threshold is not None:
-            mask = distances > threshold
+        if lower_threshold is not None and upper_threshold is not None:
+            mask = (distances > lower_threshold) & (distances < upper_threshold)
             triu_i = triu_i[mask]
             triu_j = triu_j[mask]
             distances = distances[mask]
@@ -47,8 +47,8 @@ class CompareDistanceMatrix:
         self.shared_keys = set(reference_matrix.index_map.keys()) & set(target_matrix.index_map.keys())
         self.res_id_mapping = res_id_mapping
         self.index_map = {key: i for i, key in enumerate(sorted(self.shared_keys))}
-        self.ref_coords = [reference_matrix.coords[reference_matrix.index_map[key]] for key in sorted(self.shared_keys)]
-        self.tgt_coords = [target_matrix.coords[target_matrix.index_map[key]] for key in sorted(self.shared_keys)]
+        self.ref_coords = np.array([reference_matrix.coords[reference_matrix.index_map[key]] for key in sorted(self.shared_keys)], dtype=np.float32)
+        self.tgt_coords = np.array([target_matrix.coords[target_matrix.index_map[key]] for key in sorted(self.shared_keys)], dtype=np.float32)
 
         self.ref_mat = cdist(self.ref_coords, self.ref_coords)
         self.tgt_mat = cdist(self.tgt_coords, self.tgt_coords)
