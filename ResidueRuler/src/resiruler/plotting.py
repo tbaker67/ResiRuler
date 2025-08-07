@@ -151,7 +151,7 @@ def get_hovertext(matrix):
                 #TODO: Consider adding additional information to hovertext?
                 text = (
                     f"{res_labels}<br>"
-                    f"ΔDistance: {value:.2f} Å"
+                    f"Distance: {value:.2f} Å"
                 )
             
             else:
@@ -163,24 +163,28 @@ def get_hovertext(matrix):
         hovertext.append(row)
     return hovertext
 
-def plot_interactive_contact_map(matrix, threshold=None, title=None, min=None, max=None):
+def plot_interactive_contact_map(matrix, lower_threshold=None, upper_threshold=None, title=None, min=None, max=None):
     mat, index_map = matrix.mat, matrix.index_map
-    if threshold is not None:
-        mat = np.where(mat < threshold, mat, np.nan)
+    if lower_threshold is not None and upper_threshold is not None:
+        mat = np.where(((mat < upper_threshold) & (mat > lower_threshold)), mat, np.nan)
+    if isinstance(matrix, CompareDistanceMatrix):
+        hovertemplate = "Residue 1: %{x}<br>Residue 2: %{y}<br>ΔDistance: %{z:.2f} Å<extra></extra>"
+    else:
+        hovertemplate = "Residue 1: %{x}<br>Residue 2: %{y}<br>Distance: %{z:.2f} Å<extra></extra>"
     
-    hovertext = get_hovertext(matrix)
-
+    labels = [f"{chain}-{resnum}" for (chain, resnum) in index_map.keys()]
+    vmax = np.nanmax(np.abs(mat))
     fig = go.Figure(data=go.Heatmap(
         z=mat,
-        x=[f"{chain_resnum1[0]}-{chain_resnum1[1]}" for chain_resnum1 in index_map.keys()],
-        y=[f"{chain_resnum2[0]}-{chain_resnum2[1]}" for chain_resnum2 in index_map.keys()],
-        hoverinfo="text",
-        text=hovertext,
-        colorscale="RdBu_r" if isinstance(matrix, CompareDistanceMatrix) else "viridis", 
+        x=labels,
+        y=labels,
+        colorscale="RdBu_r" if isinstance(matrix, CompareDistanceMatrix) else "viridis",
         zmid=0.0 if isinstance(matrix, CompareDistanceMatrix) else None,
-        zmin=min if min is not None else np.nanmin(mat),
-        zmax=max if max is not None else np.nanmax(mat),
-        colorbar=dict(title="ΔDistance (Å)" if isinstance(matrix, CompareDistanceMatrix) else "Distance (Å)")
+        zmin=min if min is not None else -vmax,
+        zmax=max if max is not None else vmax,
+        colorbar=dict(title="ΔDistance (Å)" if isinstance(matrix, CompareDistanceMatrix) else "Distance (Å)"),
+        
+        hovertemplate=hovertemplate
     ))
 
     fig.update_layout(
@@ -193,4 +197,3 @@ def plot_interactive_contact_map(matrix, threshold=None, title=None, min=None, m
     )
 
     return fig
-

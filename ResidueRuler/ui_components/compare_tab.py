@@ -1,11 +1,11 @@
 import streamlit as st
-from ui_components.utils import json_mapping_input, create_mapper
+from ui_components.utils import json_mapping_input, create_mapper, chain_selector_ui, load_structure_if_new, get_threshold
 from src.resiruler.plotting import plot_distance_difference, plot_interactive_contact_map
 import numpy as np
 
 
 def show_compare_tab():
-    st.header("Compare Two CSV Outputs")
+    st.header("Compare Distances within two structures")
 
    
     cif1 = st.file_uploader("Upload Aligned CIF #1", type=["cif"], key="aligned1")
@@ -27,16 +27,24 @@ def show_compare_tab():
 
     chain_mapping = json_mapping_input(label,default,key)
 
+    structure1 = load_structure_if_new(cif1, name_key="compare_name1", struct_key="compare_structure1")
+    structure2 = load_structure_if_new(cif2, name_key="compare_name2", struct_key="compare_structure2")
+
+    selected_chains = chain_selector_ui(structure1, "Select Chains in reference to compare")
+
+    pct_id_threshold = get_threshold("Set a minimum Pct Identity Threshold for matching chains together", "95.0")
+
     if st.button("Compare"):
        
         try:
-            mapper = create_mapper(cif1, cif2, chain_mapping)
+            mapper = create_mapper(structure1, structure2, chain_mapping, pct_id_threshold)
+            
             
         except ValueError as e:
             print(f"Error creating mapper: {e}")
 
         
-        ref_dm, tgt_dm, compare_dm = mapper.calc_matrices()
+        ref_dm, tgt_dm, compare_dm = mapper.calc_matrices(selected_chains)
         
         min_val = min(np.nanmin(ref_dm.mat), np.nanmin(tgt_dm.mat))
         max_val = max(np.nanmax(ref_dm.mat), np.nanmax(tgt_dm.mat))
@@ -61,13 +69,14 @@ def show_compare_tab():
 
     
         
-        st.dataframe(st.session_state.compare_df)
+        st.dataframe(st.session_state.compare_df.drop(columns=['Coord1_ref', 'Coord2_ref',
+                                                               'Coord1_tgt', 'Coord2_tgt']), use_container_width=True)
 
-        st.plotly_chart(st.session_state.ref_contact_map)
+        st.plotly_chart(st.session_state.ref_contact_map, use_container_width=False)
 
-        st.plotly_chart(st.session_state.tgt_contact_map)
+        st.plotly_chart(st.session_state.tgt_contact_map,use_container_width=False)
 
-        st.plotly_chart(st.session_state.compare_contact_map)
+        st.plotly_chart(st.session_state.compare_contact_map, use_container_width=False)
         
 
 
