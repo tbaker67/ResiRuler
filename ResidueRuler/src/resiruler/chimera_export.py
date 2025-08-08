@@ -27,41 +27,39 @@ def safe_eval(val):
 
     return np.nan  # fallback for unrecognized types
 
-def get_color(distance, thresholds):
-    if distance <= thresholds["green"]:
-        return "green"
-    elif distance <= thresholds["yellow"]:
-        return "yellow"
-    else:
-        return "red"
+def get_color_discrete(distance, thresholds):
+    if thresholds is None:
+            raise ValueError("Discrete mode requires thresholds")
+    for threshold, color_hex in thresholds:
+        if distance <= threshold:
+            return color_hex
+    # If distance above all thresholds, return last color
+    return thresholds[-1][1]
 
-def draw_links(df, output_script=None, chains=None, thresholds=None):
-    script = generate_chimera_link_script(df, chains=chains, thresholds=thresholds)
+def get_color_gradient(distance, cmap, min_val, max_val):
+    if None in (cmap, min_val, max_val):
+        raise ValueError("Gradient mode requires cmap, min_val, and max_val")
+    norm = mcolors.Normalize(vmin=min_val, vmax=max_val)
+    rgba = cmap(norm(distance))  # tuple with floats (r,g,b,a)
+    r, g, b = (int(255 * c) for c in rgba[:3])
+    return f"#{r:02x}{g:02x}{b:02x}"
 
-    if output_script:
-        with open(output_script, 'w') as f:
-            f.write(script)
 
-    return script
-
-
-def generate_chimera_link_script(df, chains=None, thresholds=None):
-    """
-    Generate a chimera cxc script to draw in links based on a desired set of thresholds
-    """
-    df["Coord1"] = df["Coord1"]
-    df["Coord2"] = df["Coord2"]
-    df["Distance"] = df["Distance"].apply(safe_eval)
-
+def generate_chimera_link_script(df, chains = None, color_mode="discrete", **kwargs):
     output = io.StringIO()
-
     for _, row in df.iterrows():
         coord1, coord2, dist = row['Coord1'], row['Coord2'], row['Distance']
         if any(pd.isna([coord1, coord2, dist])):
             continue
-        color = get_color(dist, thresholds)
-        output.write(f"shape cylinder radius 1 fromPoint {coord1[0]},{coord1[1]},{coord1[2]} "
-                     f"toPoint {coord2[0]},{coord2[1]},{coord2[2]} color {color}\n")
+        color = None
+        if color_mode == "discrete":
+            color = get_color_discrete(dist, **kwargs)
+        else:
+            color = get_color_gradient(dist, **kwargs)
+        output.write(
+            f"shape cylinder radius 1 fromPoint {coord1[0]},{coord1[1]},{coord1[2]} "
+            f"toPoint {coord2[0]},{coord2[1]},{coord2[2]} color {color}\n"
+        )
 
     if chains:
         output.write("hide\n")
@@ -69,6 +67,7 @@ def generate_chimera_link_script(df, chains=None, thresholds=None):
             output.write(f"cartoon /{chain}\n")
 
     return output.getvalue()
+
 
 def generate_cxc_scripts(df, cif1_name, cif2_name, structure_name1, structure_name2, chain_mapping=None):
     """

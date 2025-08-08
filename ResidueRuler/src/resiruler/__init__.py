@@ -14,10 +14,11 @@ from .distance_calc import (
 )
 
 from .chimera_export import (
+    get_color_discrete,
+    get_color_gradient,
     generate_chimera_link_script,
     generate_bild_string,
     generate_cxc_scripts
-
 )
 
 from .auto_alignment import (
@@ -29,7 +30,10 @@ __all__ = [
     'load_structure',
     'get_coords_from_id',
     'calc_difference_from_mapper',
-    'draw_links',
-    'chimera_movement_vectors_from_csv'
+
+    'get_color_discrete',
+    'get_color_gradient',
+
+    'chimera_movement_vectors_from_csv',
     'StructureMapper'
 ]
