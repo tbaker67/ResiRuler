@@ -34,12 +34,49 @@ class DistanceMatrix:
         df = pd.DataFrame({
             'ChainID_Resnum1': [f"{keys[i][0]}-{keys[i][1]}" for i in triu_i],
             'ChainID_Resnum2': [f"{keys[j][0]}-{keys[j][1]}" for j in triu_j],
-            'Coord1': [self.coords[i].tolist() for i in triu_i],  
-            'Coord2': [self.coords[j].tolist() for j in triu_j],
+            #'Coord1': [self.coords[i].tolist() for i in triu_i],  
+            #'Coord2': [self.coords[j].tolist() for j in triu_j],
             'Distance': distances
         })
 
         return df
+    def convert_to_df_chunked(self, lower_threshold=None, upper_threshold=None, chunk_size=5000):
+        keys = list(self.index_map.keys())
+        n = len(keys)
+
+        dfs = []
+
+        for start_i in range(0, n, chunk_size):
+            end_i = min(start_i + chunk_size, n)
+            
+            # Only compute upper triangle for this chunk
+            for i in range(start_i, end_i):
+                j_start = i + 1
+                if j_start >= n:
+                    continue
+                
+                j_indices = np.arange(j_start, n)
+                distances = self.mat[i, j_indices]
+
+                # Threshold filter to save memory
+                if lower_threshold is not None and upper_threshold is not None:
+                    mask = (distances > lower_threshold) & (distances < upper_threshold)
+                    if not np.any(mask):
+                        continue
+                    j_indices = j_indices[mask]
+                    distances = distances[mask]
+
+                # Create small DataFrame for this row
+                df_chunk = pd.DataFrame({
+                    'Res1': [f"{keys[i][0]}-{keys[i][1]}"] * len(j_indices),
+                    'Res2': [f"{keys[j][0]}-{keys[j][1]}" for j in j_indices],
+                    'Distance': distances
+                })
+
+                dfs.append(df_chunk)
+
+        # Concatenate only at the end
+        return pd.concat(dfs, ignore_index=True)
     
 
 class CompareDistanceMatrix:
@@ -70,12 +107,12 @@ class CompareDistanceMatrix:
         triu_i, triu_j = np.triu_indices(n, k=1)
 
         df = pd.DataFrame({
-            'ChainID_Resnum1_ref': [f"{keys[i][0]}-{keys[i][1]}" for i in triu_i],
-            'ChainID_Resnum2_ref': [f"{keys[j][0]}-{keys[j][1]}" for j in triu_j],
+            'ChainID_Resnum1_ref': [f"{keys[i][0]}-{keys[i][1][1]}{keys[i][1][2]}" for i in triu_i],
+            'ChainID_Resnum2_ref': [f"{keys[j][0]}-{keys[j][1][1]}{keys[j][1][2]}" for j in triu_j],
             'Coord1_ref': [self.ref_coords[i].tolist() for i in triu_i],  # convert np arrays to lists
             'Coord2_ref': [self.ref_coords[j].tolist() for j in triu_j],
-            'ChainID_Resnum1_tgt': [f"{self.res_id_mapping[keys[i]][0]}-{self.res_id_mapping[keys[i]][1]}" for i in triu_i],
-            'ChainID_Resnum2_tgt': [f"{self.res_id_mapping[keys[j]][0]}-{self.res_id_mapping[keys[j]][1]}" for j in triu_j],
+            'ChainID_Resnum1_tgt': [f"{self.res_id_mapping[keys[i]][0]}-{self.res_id_mapping[keys[i]][1][1]}{self.res_id_mapping[keys[i]][1][2]}" for i in triu_i],
+            'ChainID_Resnum2_tgt': [f"{self.res_id_mapping[keys[j]][0]}-{self.res_id_mapping[keys[j]][1][1]}{self.res_id_mapping[keys[j]][1][2]}" for j in triu_j],
             'Coord1_tgt': [self.tgt_coords[i].tolist() for i in triu_i],  # convert np arrays to lists
             'Coord2_tgt': [self.tgt_coords[j].tolist() for j in triu_j],
             '∆ distance': self.mat[triu_i, triu_j]
@@ -120,8 +157,8 @@ def calc_difference_from_mapper(structure_mapper,explicit_chain_mapping=None):
             diff_vec = tgt_coord - ref_coord
             dist = np.linalg.norm(diff_vec)
 
-            ref_ids.append(f"{ref_id}_{ref_res_id[1]}")
-            tgt_ids.append(f"{tgt_id}_{tgt_res_id[1]}")
+            ref_ids.append(f"{ref_id}_{ref_res_id[1]}{ref_res_id[2]}")
+            tgt_ids.append(f"{tgt_id}_{tgt_res_id[1]}{tgt_res_id[2]}")
             ref_coords.append(ref_coord)
             tgt_coords.append(tgt_coord)
             diffs.append(diff_vec)

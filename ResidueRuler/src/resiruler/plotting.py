@@ -141,8 +141,8 @@ def plot_interactive_contact_map(matrix, lower_threshold=None, upper_threshold=N
         hovertemplate = "Residue 1: %{x}<br>Residue 2: %{y}<br>ΔDistance: %{z:.2f} Å<extra></extra>"
     else:
         hovertemplate = "Residue 1: %{x}<br>Residue 2: %{y}<br>Distance: %{z:.2f} Å<extra></extra>"
-    
-    labels = [f"{chain}-{resnum}" for (chain, resnum) in index_map.keys()]
+        
+    labels = [f"{chain}-{resid[1]}{resid[2]}" for (chain, resid) in index_map.keys()]
     vmax = np.nanmax(np.abs(mat))
     fig = go.Figure(data=go.Heatmap(
         z=mat,
