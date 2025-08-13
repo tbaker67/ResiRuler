@@ -91,7 +91,7 @@ def convert_to_CA_coords_list(res_list):
     id_to_indices = {}
     index = 0
     for res in res_list:
-        key = (res.get_parent().get_id(), res.get_id()[1])
+        key = (res.get_parent().get_id(), res.get_id())
         coords.append(res["CA"].get_coord())
         id_to_indices[key] = index
         index += 1
