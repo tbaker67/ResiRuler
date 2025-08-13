@@ -2,10 +2,11 @@ import Bio
 from Bio.Align import PairwiseAligner, substitution_matrices
 from Bio.PDB import MMCIFParser, MMCIFIO, Structure, Model
 from io import StringIO
-from .structure_parsing import extract_res_from_chain, extract_seq_from_chain
-from .distance_calc import DistanceMatrix, CompareDistanceMatrix
+from structure_parsing import extract_res_from_chain, extract_seq_from_chain
+from distance_calc import DistanceMatrix, CompareDistanceMatrix
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+import copy
 
 class ChainMapper:
     """
@@ -163,7 +164,8 @@ class StructureMapper:
         aligner = PairwiseAligner()
         aligner.mode = "global"
         aligner.substitution_matrix = substitution_matrices.load("BLOSUM62")
-        aligner.left_open_gap_score = 1.0
+        aligner.left_open_gap_score = 1
+        
         return aligner
     
     def get_chain_sequence(self, structure, chain):
@@ -291,8 +293,185 @@ class StructureMapper:
         ref_dm = DistanceMatrix(coords_ref, index_map)
         tgt_dm = DistanceMatrix(coords_tgt, index_map)
         return ref_dm, tgt_dm, CompareDistanceMatrix(ref_dm, tgt_dm, res_id_map)
+    
+    def get_selected_mapping(self, selected_chains=None):
+        """
+        Extract a mapping from the ChainMapper Objects based on a selection of chains
+        """
+        coords_ref_list = []
+        coords_tgt_list = []
+        index_map = {} 
+        res_id_map = {}
+
+        coords_index = 0
+        for chain_id, cm in self.chain_mappings.items():
+            if selected_chains and chain_id not in selected_chains:
+                print(f"[INFO] Skipping chain {chain_id} (not in selected_chains)")
+                continue
+            
+            aligned_ref_coords, aligned_tgt_coords, chain_index_map = cm.get_aligned_coord_lists()
+            
+            coords_ref_list.append(np.array(aligned_ref_coords))
+            coords_tgt_list.append(np.array(aligned_tgt_coords))
+
+            for ref_key, chain_index in chain_index_map.items():
+                index_map[ref_key] = coords_index + chain_index
+
+            coords_index += len(chain_index_map)
+            res_id_map.update(cm.res_id_mapping)
+
+        if len(coords_ref_list) == 0:
+            raise ValueError("No aligned coordinates were found. Check selected chains and mapping.")
+
+        coords_ref = np.vstack(coords_ref_list)
+        coords_tgt = np.vstack(coords_tgt_list)
+        
+        return coords_ref, coords_tgt, index_map, res_id_map
 
 
+class EnsembleMapper:
+    """
+    This is an Ensemble Mapper Class designed to handle mutiple structure mapping objects
+    As currently implemented, it will store relevant mappings for selected chains calculated via the get_selected_global_coords class method
+    All coordinates are aligned to a single set of reference cordinates and thus corresponding coordinates can all be found using the same index
+    """
+
+    def __init__(self, ref_structure, aligner):
+        self.ref_structure=ref_structure
+        self.aligner = aligner
+        self.coords_ref = None
+        self.structure_mappings = {} # Structure Name -> StructureMapper
+        self.global_index_mapping = {} # (ChainID, ResID) -> index (for use with aligned tgt coords)
+        self.res_id_mappings = {} # Structure Name -> (ref(ChainID, ResID) -> tgt(ChainID, ResID))
+        self.coords_targets_dict= {} # Structure Name -> aligned_tgt_coords
+    
+    def add_structure(self, tgt_structure_name, tgt_structure, threshold, explicit_mapping=None):
+        structure_mapping = StructureMapper(self.ref_structure, tgt_structure, self.aligner)
+        if explicit_mapping:
+            structure_mapping.map_chains_explicit(explicit_mapping)
+        else:
+            structure_mapping.map_chains(threshold)
+        self.structure_mappings[tgt_structure_name] = structure_mapping
+    
+    def get_common_ref_residues(self, selected_chains):
+        """
+        Gets only the residues that are matched in all mapped structures
+        """
+        if selected_chains is None:
+            selected_chains = [chain.id for chain in self.ref_structure.get_chains()]
+
+        if selected_chains is None:
+            #Use all
+            selected_chains = {chain_id 
+                  for struct_map in self.structure_mappings.values() 
+                  for chain_id in struct_map.chain_mappings.keys()
+                  }
+        
+        
+        #get a set of all matched residues
+        mapped_residues_sets = []
+        for structure_mapping in self.structure_mappings.values():
+            mapped_ref_residues = set()
+            for chain_id in selected_chains:
+                if chain_id not in structure_mapping.matched_ref_chains:
+                    print(f"{chain_id} not mapped")
+                    continue
+                print(structure_mapping.chain_mappings[chain_id].ref_seq)
+                print(structure_mapping.chain_mappings[chain_id].tgt_seq)
+                #Add keys of res_id map from chain mapping (matched residues)
+                mapped_ref_residues.update(structure_mapping.chain_mappings[chain_id].res_id_mapping.keys())
+            
+            mapped_residues_sets.append(mapped_ref_residues)
+        
+        if not mapped_residues_sets:
+            return set()
+        
+        common_ref_residues = set.intersection(*mapped_residues_sets)
+
+        
+        return common_ref_residues
+
+
+    def set_selected_global_coords(self, selected_chains=None):
+        if not self.structure_mappings:
+            raise ValueError("No target structures added yet.")
+            
+        if selected_chains is None:
+            selected_chains = [chain.id for chain in self.ref_structure.get_chains()]
+        
+        #now we have a set of residues that got matched in all structure mappings
+        common_ref_residues = self.get_common_ref_residues(selected_chains)
+
+        #chains_included = {c for c, _ in common_ref_residues}
+       
+
+        sorted_residues = sorted(common_ref_residues) # consistent order (Alphabetical by chain first, then residue number, then insertion code)
+
+
+        first_mapping = next(iter(self.structure_mappings.values()))
+        coords_ref_list = []
+        global_index_mapping = {}
+        
+        coords_ref,_ ,index_map , _ = first_mapping.get_selected_mapping(selected_chains)
+        
+        #Get the reference coordinates
+        for idx, res_id in enumerate(sorted_residues):
+
+            coords_ref_list.append(coords_ref[index_map[res_id]])
+            global_index_mapping[res_id] = idx
+
+        self.coords_ref = np.array(coords_ref_list)
+        self.global_index_mapping = global_index_mapping
+
+
+        self.coords_targets_dict.clear()
+        self.res_id_mappings.clear()
+        #Map the target coordinates for each mapper
+        for name, structure_mapping in self.structure_mappings.items():
+
+            _,coords_tgt,index_map,res_id_map = structure_mapping.get_selected_mapping(selected_chains)
+
+            #filter res_id map to only include the relevant residues, now we can assume anything in this is actually mapped in across all structures
+            #Only necessary if we iterate through this mapping, otherwise we can get away with not filtering 
+            filtered_res_id_map = {chain_res_ref: chain_res_tgt for chain_res_ref, chain_res_tgt in res_id_map.items() if chain_res_ref in common_ref_residues}
+            
+            remapped_coords_tgt = []
+
+            for ref_id in sorted_residues:
+                remapped_coords_tgt.append(coords_tgt[index_map[ref_id]])
+
+            self.coords_targets_dict[name] = np.array(remapped_coords_tgt)
+            self.res_id_mappings[name] = filtered_res_id_map
+            if filtered_res_id_map is None:
+                print(f"RESID MAP IS NONE FOR {name}")
+            
+
+    def calc_matrices(self):
+        """
+        Creates a dictionary of DistanceMatrix and CompareMatrix Objects and returns it 
+        This should only be used after set_selected_global_coords has been called/used
+        """
+        tgt_dms = {}
+        compare_dms = {}
+        index_map = self.global_index_mapping
+        aligned_ref_coords = self.coords_ref
+        ref_dm = DistanceMatrix(aligned_ref_coords, index_map)
+        for structure_name in self.structure_mappings.keys():
+            res_id_map = self.res_id_mappings.get(structure_name)
+            if not res_id_map:
+                print(f"[WARNING] Skipping {structure_name}: no residue ID mapping found.")
+                continue  # skip this one
+            
+            aligned_tgt_coords = self.coords_targets_dict[structure_name]
+            tgt_dm = DistanceMatrix(aligned_tgt_coords, index_map, res_id_map)
+            compare_dm = CompareDistanceMatrix(ref_dm, tgt_dm, res_id_map)
+
+            tgt_dms[structure_name] = tgt_dm
+            compare_dms[structure_name] = compare_dm
+                
+        return ref_dm, tgt_dms, compare_dms
+
+##TODO: MAKE DEEP COPY
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):
     """
     Writes a filtered structure which includes either only the chains with an associted match, or only the residues with an associated match between tgt and reference
@@ -310,6 +489,7 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
 
         new_chain = chain.__class__(chain.id)
         for res in chain.get_residues():
+            res_copy = copy.deepcopy()
             key = (chain.id, res.id[1])
             #No residue match or not filtering residues
             if matched_residues is not None and key not in matched_residues:

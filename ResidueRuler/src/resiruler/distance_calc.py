@@ -3,7 +3,8 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 class DistanceMatrix:
-    def __init__(self, coords_list, index_map):
+    def __init__(self, coords_list, index_map, res_id_map=None):
+        self.res_id_mapping = res_id_map
         self.coords = np.array(coords_list, dtype=np.float32)
         self.index_map = dict(sorted(index_map.items())) #(Chain_ID, resnum) -> index
         self.mat = cdist(self.coords, self.coords, metric='euclidean')
