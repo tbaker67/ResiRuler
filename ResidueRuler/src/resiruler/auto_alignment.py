@@ -471,7 +471,6 @@ class EnsembleMapper:
                 
         return ref_dm, tgt_dms, compare_dms
 
-##TODO: MAKE DEEP COPY
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):
     """
     Writes a filtered structure which includes either only the chains with an associted match, or only the residues with an associated match between tgt and reference
@@ -490,11 +489,11 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
         new_chain = chain.__class__(chain.id)
         for res in chain.get_residues():
             res_copy = copy.deepcopy()
-            key = (chain.id, res.id[1])
+            key = (chain.id, res.id)
             #No residue match or not filtering residues
             if matched_residues is not None and key not in matched_residues:
                 continue
-            new_chain.add(res)
+            new_chain.add(res_copy)
 
         #If we've got a chain add it the new structure
         if len(new_chain):
@@ -506,7 +505,7 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
     io.save(io_buffer)
     return io_buffer.getvalue()  # return CIF string
 
-##TODO:: FIX TO WORK WITH UPDATE CHAINMAPPER FUNCTIONS
+##TODO:: FIX TO WORK WITH UPDATED CHAINMAPPER FUNCTIONS
 def filter_and_write_aligned_maps(ref_cif, tgt_cif, identity_threshold=95.0):
     """
     Filter aligned models, and write out new models which include only matched residues as well as models which include only matched chains 
@@ -526,9 +525,9 @@ def filter_and_write_aligned_maps(ref_cif, tgt_cif, identity_threshold=95.0):
     #Get matches residues and chains 
     for chain_id, cm in mapper.chain_mappings.items():
         for ref_res_id, tgt_res_id in cm.res_id_mapping.items():
-            matched_ref_residues.add((ref_res_id)) # (chain, resnum)
+            matched_ref_residues.add((ref_res_id)) # (chainID, resID)
             
-            matched_tgt_residues.add((tgt_res_id)) # (chain, resnum)
+            matched_tgt_residues.add((tgt_res_id)) # (chainID, resID)
 
         matched_ref_chains.add(cm.ref_chain.id)
         matched_tgt_chains.add(cm.tgt_chain.id)
