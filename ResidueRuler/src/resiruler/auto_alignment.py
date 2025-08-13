@@ -291,41 +291,6 @@ class StructureMapper:
         ref_dm = DistanceMatrix(coords_ref, index_map)
         tgt_dm = DistanceMatrix(coords_tgt, index_map)
         return ref_dm, tgt_dm, CompareDistanceMatrix(ref_dm, tgt_dm, res_id_map)
-    
-    def get_selected_mapping(self, selected_chains=None):
-        """
-        Extract a mapping from the ChainMapper Objects based on a selection of chains
-        """
-        coords_ref_list = []
-        coords_tgt_list = []
-        index_map = {} 
-        res_id_map = {}
-
-        coords_index = 0
-        for chain_id, cm in self.chain_mappings.items():
-            if selected_chains and chain_id not in selected_chains:
-                print(f"[INFO] Skipping chain {chain_id} (not in selected_chains)")
-                continue
-            
-            aligned_ref_coords, aligned_tgt_coords, chain_index_map = cm.get_aligned_coord_lists()
-            
-            coords_ref_list.append(np.array(aligned_ref_coords))
-            coords_tgt_list.append(np.array(aligned_tgt_coords))
-
-            for ref_key, chain_index in chain_index_map.items():
-                index_map[ref_key] = coords_index + chain_index
-
-            coords_index += len(chain_index_map)
-            res_id_map.update(cm.res_id_mapping)
-
-        if len(coords_ref_list) == 0:
-            raise ValueError("No aligned coordinates were found. Check selected chains and mapping.")
-
-        coords_ref = np.vstack(coords_ref_list)
-        coords_tgt = np.vstack(coords_tgt_list)
-        
-        return coords_ref, coords_tgt, index_map, res_id_map
-
 
 
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):
