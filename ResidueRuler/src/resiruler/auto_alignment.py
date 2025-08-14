@@ -472,29 +472,40 @@ class EnsembleMapper:
                 
         return ref_dm, tgt_dms, compare_dms
     
-    def calc_movement_dfs_rmsds(self):
+    def _compute_diffs(self, ref_coords, tgt_coords):
+        diff_vecs = ref_coords - tgt_coords
+        distances = np.linalg.norm(diff_vecs, axis=1)
+        rmsd = np.sqrt(np.mean(np.sum(diff_vecs**2, axis=1)))
+        return diff_vecs, distances, rmsd
+    
+    def calc_rmsds(self):
         """
-        Calculate movement dfs and global rmsd for each structure mapped to the reference, by taking the common residues and finding their difference with corresponding 
+        Calculate global RMSD for each structure.
+        """
+        rmsds = {}
+        ref_coords = self.coords_ref
+
+        for structure_name, tgt_coords in self.coords_targets_dict.items():
+           _,_,rmsd = self._compute_diffs(ref_coords, tgt_coords)
+           rmsds[structure_name] = rmsd
+        return rmsds
+
+    def calc_movement_dfs(self):
+        """
+        Calculate movement dfs for each structure mapped to the reference, by taking the common residues and finding their difference with corresponding 
         residues in the reference 
         """
         movement_dfs = {}
-        rmsds = {}
         ref_coords = self.coords_ref
-        global_index_map = self.global_index_mapping
+
         for structure_name, tgt_coords in self.coords_targets_dict.items():
             
             tgt_coords = self.coords_targets_dict[structure_name]
 
-            #distances/difference vectors from residue in reference structure to corresponding residue in the next
-            diff_vecs = ref_coords - tgt_coords
-            distances = np.linalg.norm(diff_vecs, axis=1)
-            rmsd = np.sqrt(np.mean(np.sum(diff_vecs**2, axis=1)))
+            diff_vecs, distances,_ = self._compute_diffs(ref_coords, tgt_coords)
 
             ref_ids, tgt_ids = zip(*self.res_id_mappings[structure_name].items())
-            print("Ref ID Length", len(ref_ids))
-            print("Tgt ID Length", len(tgt_ids))
-            print("Ref Coords Length", len(ref_coords))
-            print("TGT Coords Length", len(tgt_coords))
+            
             df = pd.DataFrame({
             "ChainID_Resnum1": ref_ids,
             "ChainID_Resnum2": tgt_ids,
@@ -505,9 +516,8 @@ class EnsembleMapper:
             })
 
             movement_dfs[structure_name] = df
-            rmsds[structure_name] = rmsd
-
-        return movement_dfs, rmsds
+            
+        return movement_dfs
 
 
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):
