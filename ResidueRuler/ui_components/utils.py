@@ -6,7 +6,7 @@ import re
 import base64
 from io import BytesIO
 import zipfile
-from src.resiruler.auto_alignment import StructureMapper
+from src.resiruler.auto_alignment import StructureMapper, EnsembleMapper
 from src.resiruler.structure_parsing import load_structure
 
 def save_temp_file(uploaded_file):
@@ -77,15 +77,29 @@ def create_mapper(structure1, structure2, chain_mapping, threshold):
     
     return mapper
 
+def create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, threshold, aligner):
+    ensemble_mapper = EnsembleMapper(ref_structure, aligner)
+
+    for structure_name, tgt_structure in tgt_structures.items():
+        ensemble_mapper.add_structure(structure_name, tgt_structure,threshold, chain_mappings[structure_name])
+    
+    return ensemble_mapper
+
 def chain_selector_ui(structure, label="Select Chains to Visualize", default_all=True):
     """
-    Display a Streamlit multiselect box for choosing chains from a structure.
+    Display a Streamlit multiselect box for choosing chains from a structure or structure mapper
+    As such, structure should only be a BioPython structure object, or a StructureMapper object from autoalignments.py
     """
     if structure is None:
         st.warning("No structure loaded. Please upload a file first.")
         return None
-
-    chain_options = sorted({chain.id for model in structure for chain in model})
+    
+    chain_options = None
+    if isinstance(structure, StructureMapper):
+        chain_options = sorted(structure.matched_ref_chains)
+        #
+    else:
+        chain_options = sorted({chain.id for model in structure for chain in model})
     multiselect_options = ["All"] + chain_options
 
     default_selection = ["All"] if default_all else []
@@ -117,7 +131,48 @@ def load_structure_if_new(cif_file, name_key, struct_key):
         structure = st.session_state.get(struct_key)
 
     return structure
-    
+
+def load_structures_if_new(cif_files, name_key_prefix, struct_key_prefix):
+    """
+    Load one or more structures, caching them in session_state.
+    Returns a dict mapping file name -> structure object.
+    """
+    if not cif_files:
+        return {}
+
+    structures = {}
+    for i, cif_file in enumerate(cif_files):
+        name_key = f"{name_key_prefix}_{i}"
+        struct_key = f"{struct_key_prefix}_{i}"
+
+        if (name_key not in st.session_state 
+            or st.session_state[name_key] != cif_file.name):
+
+            cif_path = save_temp_file(cif_file)
+            structure = load_structure(cif_path)
+
+            st.session_state[struct_key] = structure
+            st.session_state[name_key] = cif_file.name
+        else:
+            structure = st.session_state.get(struct_key)
+
+        structures[cif_file.name] = structure
+
+    return structures
+
+
+def get_chain_mappings_for_targets(structures_dict, default_mapping):
+    """
+    Ask user for chain mapping JSON for each target structure.
+    Returns dict {filename: mapping_dict}.
+    """
+    mappings = {}
+    for filename in structures_dict.keys():
+        label = f"Chain mapping for target: {filename}"
+        mapping = json_mapping_input(label, default_mapping, key=f"mapping_{filename}")
+        mappings[filename] = mapping
+    return mappings
+
 def get_threshold(label, default):
     threshold_input = st.text_input(label, value=default)
     try:

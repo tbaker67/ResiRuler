@@ -2,8 +2,8 @@ import Bio
 from Bio.Align import PairwiseAligner, substitution_matrices
 from Bio.PDB import MMCIFParser, MMCIFIO, Structure, Model
 from io import StringIO
-from structure_parsing import extract_res_from_chain, extract_seq_from_chain
-from distance_calc import DistanceMatrix, CompareDistanceMatrix
+from .structure_parsing import extract_res_from_chain, extract_seq_from_chain
+from .distance_calc import DistanceMatrix, CompareDistanceMatrix
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 import copy
