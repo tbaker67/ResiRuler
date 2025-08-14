@@ -7,6 +7,7 @@ from distance_calc import DistanceMatrix, CompareDistanceMatrix
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 import copy
+import pandas as pd 
 
 class ChainMapper:
     """
@@ -457,7 +458,7 @@ class EnsembleMapper:
         aligned_ref_coords = self.coords_ref
         ref_dm = DistanceMatrix(aligned_ref_coords, index_map)
         for structure_name in self.structure_mappings.keys():
-            res_id_map = self.res_id_mappings.get(structure_name)
+            res_id_map = self.res_id_mappings.get(structure_name, None)
             if not res_id_map:
                 print(f"[WARNING] Skipping {structure_name}: no residue ID mapping found.")
                 continue  # skip this one
@@ -470,6 +471,44 @@ class EnsembleMapper:
             compare_dms[structure_name] = compare_dm
                 
         return ref_dm, tgt_dms, compare_dms
+    
+    def calc_movement_dfs_rmsds(self):
+        """
+        Calculate movement dfs and global rmsd for each structure mapped to the reference, by taking the common residues and finding their difference with corresponding 
+        residues in the reference 
+        """
+        movement_dfs = {}
+        rmsds = {}
+        ref_coords = self.coords_ref
+        global_index_map = self.global_index_mapping
+        for structure_name, tgt_coords in self.coords_targets_dict.items():
+            
+            tgt_coords = self.coords_targets_dict[structure_name]
+
+            #distances/difference vectors from residue in reference structure to corresponding residue in the next
+            diff_vecs = ref_coords - tgt_coords
+            distances = np.linalg.norm(diff_vecs, axis=1)
+            rmsd = np.sqrt(np.mean(np.sum(diff_vecs**2, axis=1)))
+
+            ref_ids, tgt_ids = zip(*self.res_id_mappings[structure_name].items())
+            print("Ref ID Length", len(ref_ids))
+            print("Tgt ID Length", len(tgt_ids))
+            print("Ref Coords Length", len(ref_coords))
+            print("TGT Coords Length", len(tgt_coords))
+            df = pd.DataFrame({
+            "ChainID_Resnum1": ref_ids,
+            "ChainID_Resnum2": tgt_ids,
+            "Coord1": np.array(ref_coords).tolist(),
+            "Coord2": np.array(tgt_coords).tolist(),
+            "Diff_Vec": np.array(diff_vecs).tolist(),
+            "Distance": distances
+            })
+
+            movement_dfs[structure_name] = df
+            rmsds[structure_name] = rmsd
+
+        return movement_dfs, rmsds
+
 
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):
     """
@@ -505,7 +544,6 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
     io.save(io_buffer)
     return io_buffer.getvalue()  # return CIF string
 
-##TODO:: FIX TO WORK WITH UPDATED CHAINMAPPER FUNCTIONS
 def filter_and_write_aligned_maps(ref_cif, tgt_cif, identity_threshold=95.0):
     """
     Filter aligned models, and write out new models which include only matched residues as well as models which include only matched chains 
