@@ -2,8 +2,8 @@ import Bio
 from Bio.Align import PairwiseAligner, substitution_matrices
 from Bio.PDB import MMCIFParser, MMCIFIO, Structure, Model
 from io import StringIO
-from .structure_parsing import extract_res_from_chain, extract_seq_from_chain
-from .distance_calc import DistanceMatrix, CompareDistanceMatrix
+from structure_parsing import extract_res_from_chain, extract_seq_from_chain
+from distance_calc import DistanceMatrix, CompareDistanceMatrix
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 import copy
@@ -505,10 +505,13 @@ class EnsembleMapper:
             diff_vecs, distances,_ = self._compute_diffs(ref_coords, tgt_coords)
 
             ref_ids, tgt_ids = zip(*self.res_id_mappings[structure_name].items())
+
+            ref_strs = [f"{chain}-{res[1]}{res[2]}" for chain, res in ref_ids]
+            tgt_strs = [f"{chain}-{res[1]}{res[2]}" for chain, res in tgt_ids]
             
             df = pd.DataFrame({
-            "ChainID_Resnum1": ref_ids,
-            "ChainID_Resnum2": tgt_ids,
+            "ChainID_Resnum1": ref_strs,
+            "ChainID_Resnum2": tgt_strs,
             "Coord1": np.array(ref_coords).tolist(),
             "Coord2": np.array(tgt_coords).tolist(),
             "Diff_Vec": np.array(diff_vecs).tolist(),
