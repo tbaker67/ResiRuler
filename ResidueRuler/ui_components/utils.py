@@ -4,6 +4,7 @@ import streamlit as st
 import json
 import re 
 import base64
+import io
 from io import BytesIO
 import zipfile
 from src.resiruler.auto_alignment import StructureMapper, EnsembleMapper
@@ -156,7 +157,8 @@ def load_structures_if_new(cif_files, name_key_prefix, struct_key_prefix):
         else:
             structure = st.session_state.get(struct_key)
 
-        structures[cif_file.name] = structure
+        #remove .cif for names
+        structures[cif_file.name[:-4]] = structure
 
     return structures
 
@@ -180,3 +182,31 @@ def get_threshold(label, default):
     except ValueError:
         st.error("Please enter a valid number.")
         return None
+
+
+def create_downloadable_zip_grouped(file_groups):
+    """
+    Create a ZIP buffer from multiple file groups.
+    file_groups = dict where
+        key   = folder name or None for root
+        value = dict mapping {filename: content}
+    
+    Special case:
+        key=None → files go in the root of the ZIP
+        key="csv"/"bild"/"models" → files go in that subfolder
+    Supports str, bytes, StringIO, BytesIO as content.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as z:
+        for folder, files in file_groups.items():
+            for filename, content in files.items():
+                # Convert buffers to bytes
+                if hasattr(content, "getvalue"):
+                    content = content.getvalue()
+                if isinstance(content, str):
+                    content = content.encode("utf-8")
+                # Determine path inside ZIP
+                arcname = f"{folder}/{filename}" if folder else filename
+                z.writestr(arcname, content)
+    buffer.seek(0)
+    return buffer

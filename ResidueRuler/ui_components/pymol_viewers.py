@@ -71,7 +71,7 @@ def draw_movement_shift_pymol(df, view):
 
     for _, row in df.iterrows():
         # Parse chain and residue number from 'C_58'
-        chain, resi = row['ChainID_Resnum1'].split('_')
+        chain, resi = row['ChainID_Resnum1'].split('-')
 
         dist = row['Distance']
         r, g, b = [int(255 * c) for c in cmap(norm(dist))[:3]]

@@ -81,7 +81,7 @@ def generate_multiple_movement_scripts(movement_dfs, ref_name):
 
     ids = 1
     for tgt_structure_name, movement_df in movement_dfs.items():
-        #Assumes that the names are simple the cif files without the extension
+        #Assumes that the names are simply the cif files without the extension
         ref_cif_name = ref_name + ".cif"
         tgt_cif_name = tgt_structure_name + ".cif"
         def_attr, cxc_script = generate_cxc_scripts(movement_df, ref_cif_name, ref_name, tgt_cif_name, tgt_structure_name, ids)
@@ -132,9 +132,9 @@ def generate_cxc_scripts(df, cif1_name, structure_name1, cif2_name, structure_na
 
     cxc = StringIO()
     #write cxc to open up models and the def attr files
-    cxc.write(f"open {cif1_name} name {name1}->{name2} \n")
+    cxc.write(f"open models/{cif1_name} name {name1}->{name2} \n")
     #cxc.write(f"name {name1} #{first_structure_id} \n")
-    cxc.write(f"open {cif2_name} name {name2}->{name1} \n")
+    cxc.write(f"open models/{cif2_name} name {name2}->{name1} \n")
     #cxc.write(f"name {name2} #{first_structure_id + 1} \n ")
 
     
@@ -160,7 +160,7 @@ def generate_multiple_bilds(movement_dfs):
     for df in movement_dfs.values():
         vmin = min(vmin, df['Distance'].min())
         vmax = max(vmax, df['Distance'].max())
-    for df, name in movement_dfs.items():
+    for name,df in movement_dfs.items():
         coords1 = df['Coord1']
         coords2 = df['Coord2']
         distances = df['Distance'].apply(safe_eval)
@@ -181,7 +181,7 @@ def generate_multiple_bilds(movement_dfs):
             output.write(f'.color #{color_hex} \n')
             output.write(f'.arrow {x1} {y1} {z1} {x2} {y2} {z2} \n')
 
-        output_dict[name] = output.getvalue()
+        output_dict[name + ".bild"] = output.getvalue()
 
     return output_dict
 
