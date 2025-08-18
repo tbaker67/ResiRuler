@@ -1,5 +1,5 @@
 import streamlit as st
-from ui_components.utils import json_mapping_input, create_mapper, chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_ensemble_mapper
+from ui_components.utils import json_mapping_input, create_mapper, chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments
 from src.resiruler.plotting import plot_distance_difference, plot_interactive_contact_map, plot_all_matrices_ensemble
 import numpy as np
 from Bio.Align import PairwiseAligner, substitution_matrices
@@ -26,26 +26,21 @@ def show_compare_tab():
         }'''
         chain_mappings = get_chain_mappings_for_targets(tgt_structures, default_mapping)
 
-        st.write("Loaded reference:", list(st.session_state.get("compare_name1", "")))
-        st.write("Loaded targets:", list(tgt_structures.keys()))
-        st.write("Chain mappings:", chain_mappings)
-
+       
     #get threshold and do alignments
     pct_id_threshold = get_threshold("Set a minimum Pct Identity Threshold for matching chains together", "95.0")
     
     st.session_state.setdefault("mapper", None)
 
-    ##TODO: Make functino to allow user to set aligner with parameters like gap penalties etc
-    aligner = PairwiseAligner()
-    aligner.mode = "global"
-    aligner.substitution_matrix = substitution_matrices.load("BLOSUM62")
-    aligner.left_open_gap_score = 1
-    aligner.open_gap_score = -10
+    aligner = aligner_ui("Compare Aligner")
 
     if st.button("Map"):
         st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, aligner)
     
 
+    if st.session_state.mapper:
+        show_alignments(st.session_state.mapper, key="compare_alignment")
+        
     ##TODO: Allow for filtering to only matched chains across all
     selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")
 

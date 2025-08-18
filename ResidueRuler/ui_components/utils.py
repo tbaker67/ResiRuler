@@ -210,3 +210,171 @@ def create_downloadable_zip_grouped(file_groups):
                 z.writestr(arcname, content)
     buffer.seek(0)
     return buffer
+
+from Bio.Align import PairwiseAligner, substitution_matrices
+
+def aligner_ui(key_prefix="aligner"):
+    """
+    Function to allow user to specify a biopython Pairwise Aligner Object
+    """
+    st.subheader("Pairwise Aligner Settings")
+
+    
+    with st.container():
+        # Alignment mode and matrix 
+        col1, col2 = st.columns(2)
+        with col1:
+            mode = st.selectbox("Alignment mode", ["global", "local"], key=f"{key_prefix}_mode")
+        with col2:
+            matrix_name = st.selectbox("Substitution matrix", ["BLOSUM62", "BLOSUM80", "PAM30", "PAM250"], key=f"{key_prefix}_matrix")
+
+        # Gap scores in one row
+        col3, col4 = st.columns(2)
+        with col3:
+            open_gap_score = st.number_input("Gap opening penalty", value=-10, step=1, key=f"{key_prefix}_open_gap")
+        with col4:
+            extend_gap_score = st.number_input("Gap extension penalty", value=-1, step=1, key=f"{key_prefix}_extend_gap")
+
+        # optional end-gap penalties 
+        with st.expander("Advanced: End-gap penalties"):
+            use_end_gaps = st.checkbox("Enable end-gap penalties?", key=f"{key_prefix}_use_end_gaps")
+            left_open_gap_score = None
+            right_open_gap_score = None
+            if use_end_gaps:
+                col5, col6 = st.columns(2)
+                with col5:
+                    left_open_gap_score = st.number_input("Left end gap penalty", value=0, step=1, key=f"{key_prefix}_left_end_gap")
+                with col6:
+                    right_open_gap_score = st.number_input("Right end gap penalty", value=0, step=1, key=f"{key_prefix}_right_end_gap")
+
+    
+    aligner = PairwiseAligner()
+    aligner.mode = mode
+    aligner.substitution_matrix = substitution_matrices.load(matrix_name)
+    aligner.open_gap_score = open_gap_score
+    aligner.extend_gap_score = extend_gap_score
+    if use_end_gaps:
+        aligner.left_open_gap_score = left_open_gap_score
+        aligner.right_open_gap_score = right_open_gap_score
+
+    return aligner
+
+    
+
+def show_alignments(ensemble_mapper, key="alignment_select"):
+    """
+    shows the alignment present in all structure mappers of a selected chiain in the reference
+    """
+    selected_chain = st.selectbox(
+        "Select Chain to view alignment of",
+        options=[chain.id for chain in ensemble_mapper.ref_structure.get_chains()],
+        key=key
+    )
+
+    for structure_name, mapper in ensemble_mapper.structure_mappings.items():
+        chain_mapper = mapper.chain_mappings.get(selected_chain, None)
+        if chain_mapper is None or chain_mapper.alignment is None:
+            continue
+
+        
+        st.subheader(f"Alignment for structure: {structure_name}, chain: {selected_chain}")
+        
+        show_chain_alignment(chain_mapper, ref_start=chain_mapper.ref_start, tgt_start=chain_mapper.tgt_start)
+
+
+def show_chain_alignment(chain_mapper, ref_start=1, tgt_start=1):
+    """
+    Creates html for an alignment viewer, with highlighted colors indicating mismatches(red), gaps(grey), and matches(green)
+    additionally, by hovering over a residue in the sequence the residue number will be shown
+    """
+    if chain_mapper is None or chain_mapper.alignment is None:
+        st.warning("No alignment available")
+        return
+
+    seqs = [seq for seq in chain_mapper.alignment]
+    if len(seqs) < 2:
+        st.warning("Alignment has less than 2 sequences")
+        return
+
+    ref_seq, tgt_seq = seqs[0], seqs[1]
+    ref_counter, tgt_counter = ref_start, tgt_start
+
+    ref_line, tgt_line = "", ""
+
+    for a, b in zip(ref_seq, tgt_seq):
+        #color based on matches
+        color = "lightgray" if a == "-" or b == "-" else "lightgreen" if a == b else "lightcoral"
+
+        # reference residue
+        if a != "-":
+            ref_line += (
+                f"<span class='residue' style='background-color:{color}'>"
+                #tooltip allows for hover display of residue number
+                f"{a}<span class='tooltip'>{ref_counter}</span>"
+                f"</span>"
+            )
+            ref_counter += 1
+        else:
+            ref_line += f"<span class='residue' style='background-color:{color}'>{a}</span>"
+
+        # target residue
+        if b != "-":
+            tgt_line += (
+                f"<span class='residue' style='background-color:{color}'>"
+                f"{b}<span class='tooltip'>{tgt_counter}</span>"
+                f"</span>"
+            )
+            tgt_counter += 1
+        else:
+            tgt_line += f"<span class='residue' style='background-color:{color}'>{b}</span>"
+
+    #Creates an html object that can be viewed in streamlit
+    html_content = f"""
+    <html>
+    <head>
+    <style>
+    .residue {{
+        position: relative;
+        display: inline-block;
+        width: 1.3ch;  /* fixed width per residue */
+        font-family: monospace;
+        text-align: center;
+        cursor: pointer;
+    }}
+    .tooltip {{
+        display: none;
+        position: absolute;
+        top: -1.5em;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #eee;
+        border: 1px solid #999;
+        font-size: 10px;
+        padding: 1px 3px;
+        border-radius: 3px;
+        white-space: nowrap;
+        z-index: 10;
+    }}
+    .residue:hover .tooltip {{
+        display: block;
+    }}
+    .sequence {{
+        white-space: pre;
+    }}
+    .label {{
+        display: inline-block;
+        width: 80px;   /* fixed width for both labels */
+        text-align: right;
+        font-weight: bold;
+    }}
+    </style>
+    </head>
+    <body>
+        <div class='sequence'><span class='label'>Ref ({chain_mapper.ref_chain.id}):</span> {ref_line}</div>
+        <div class='sequence'><span class='label'>Tgt ({chain_mapper.tgt_chain.id}):</span> {tgt_line}</div>
+    </body>
+    </html>
+    """
+
+    st.components.v1.html(html_content, height=50, scrolling=True)
+

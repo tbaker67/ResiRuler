@@ -1,6 +1,6 @@
 import streamlit as st
 from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol
-from ui_components.utils import json_mapping_input, create_downloadable_zip, create_ensemble_mapper, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_downloadable_zip_grouped
+from ui_components.utils import json_mapping_input, create_downloadable_zip, create_ensemble_mapper, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_downloadable_zip_grouped, aligner_ui, show_alignments
 from src.resiruler.distance_calc import calc_difference_from_mapper
 from src.resiruler.plotting import plot_colorbar
 from src.resiruler.chimera_export import generate_multiple_bilds, generate_multiple_movement_scripts
@@ -36,17 +36,16 @@ def show_movement_tab():
     
     st.session_state.setdefault("mapper", None)
 
-    ##TODO: Make functino to allow user to set aligner with parameters like gap penalties etc
-    aligner = PairwiseAligner()
-    aligner.mode = "global"
-    aligner.substitution_matrix = substitution_matrices.load("BLOSUM62")
-    aligner.left_open_gap_score = 1
-    aligner.open_gap_score = -10
+    aligner = aligner_ui("movement aligner")
 
     if st.button("Map Chains"):
         st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, aligner)
         st.session_state.mapper.set_selected_global_coords()
 
+        
+        
+    if st.session_state.mapper is not None:
+        show_alignments(st.session_state.mapper, key="movement_alignment")
 
     if st.button("Analyze Movement"):
 
@@ -123,17 +122,18 @@ def show_movement_tab():
         "Select structure for visualization",
         options=list(structure_choices.keys())
         )
-
+        print(st.session_state.movement_dfs)
         # Initialize viewer from chosen file
-        viewer = start_pymol_viewer(ref_cif)
+        viewer1 = start_pymol_viewer(ref_cif)
+        viewer2 = start_pymol_viewer(ref_cif)
 
         # Draw both movement visualizations
         st.session_state.movement_view = draw_movement_shift_pymol(
-        st.session_state.movement_dfs[selected_structure], viewer
+        st.session_state.movement_dfs[selected_structure], viewer1
 
         )
         st.session_state.vector_view = draw_movement_vectors_py3dmol(
-        st.session_state.movement_dfs[selected_structure], viewer
+        st.session_state.movement_dfs[selected_structure], viewer2
         )
         st.subheader("Distance Shift Visualization")
         html = st.session_state.movement_view._make_html()
