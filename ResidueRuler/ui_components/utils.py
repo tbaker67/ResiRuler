@@ -162,17 +162,77 @@ def load_structures_if_new(cif_files, name_key_prefix, struct_key_prefix):
 
     return structures
 
+import pandas as pd
 
-def get_chain_mappings_for_targets(structures_dict, default_mapping):
+def chain_mapping_input(ref_chains, tgt_chains, default=None, key="chain_mapping"):
     """
-    Ask user for chain mapping JSON for each target structure.
-    Returns dict {filename: mapping_dict}.
+    Editable table for mapping reference → target chains.
+    - Blank entries are ignored.
+    - if all entries blank returns None (auto mapping mode).
+    """
+    st.caption("Map reference chains → target chains (leave all blank for auto mapping)")
+
+    # Build default DataFrame
+    if isinstance(default, dict):
+        df = pd.DataFrame(
+            [(ref, default.get(ref, "")) for ref in ref_chains],
+            columns=["Reference Chain", "Target Chain"]
+        )
+    else:
+        df = pd.DataFrame(
+            [(ref, "") for ref in ref_chains],
+            columns=["Reference Chain", "Target Chain"]
+        )
+
+    # Editable table
+    edited_df = st.data_editor(
+        df,
+        num_rows="fixed",
+        key=key,
+        column_config={
+            "Reference Chain": st.column_config.TextColumn("Reference Chain", disabled=True),
+            "Target Chain": st.column_config.SelectboxColumn(
+                "Target Chain",
+                options=[""] + list(tgt_chains),  # allow blank
+                required=False,
+            ),
+        },
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    # Convert to dict, skipping blanks
+    mapping = {
+        ref: tgt
+        for ref, tgt in zip(edited_df["Reference Chain"], edited_df["Target Chain"])
+        if tgt  # only keep non-blank
+    }
+
+    # If user left everything blank → return None (auto mode)
+    if not mapping:
+        st.info("No explicit mapping specified → auto mapping will be used.")
+        return None
+
+    return mapping
+
+
+def get_chain_mappings_for_targets(structures_dict, ref_chains, default_mapping=None, key="mapping"):
+    """
+    Build chain mapping table for each target structure.
     """
     mappings = {}
-    for filename in structures_dict.keys():
-        label = f"Chain mapping for target: {filename}"
-        mapping = json_mapping_input(label, default_mapping, key=f"mapping_{filename}")
+    for filename, tgt_structure in structures_dict.items():
+        st.subheader(f"Chain mapping for target: {filename}")
+
+        tgt_chains = [chain.id for chain in tgt_structure.get_chains()]  
+        mapping = chain_mapping_input(
+            ref_chains,
+            tgt_chains,
+            default=default_mapping,
+            key=f"{key}_{filename}"
+        )
         mappings[filename] = mapping
+
     return mappings
 
 def get_threshold(label, default):
