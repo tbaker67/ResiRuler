@@ -8,7 +8,7 @@ import io
 from io import BytesIO
 import zipfile
 from src.resiruler.auto_alignment import StructureMapper, EnsembleMapper
-from src.resiruler.structure_parsing import load_structure
+from src.resiruler.structure_parsing import load_structure, extract_res_from_chain
 
 def save_temp_file(uploaded_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[-1]) as tmp_file:
@@ -173,47 +173,48 @@ def chain_mapping_input(ref_chains, tgt_chains, default=None, key="chain_mapping
     st.caption("Map reference chains → target chains (leave all blank for auto mapping)")
 
     # Build default DataFrame
-    if isinstance(default, dict):
-        df = pd.DataFrame(
-            [(ref, default.get(ref, "")) for ref in ref_chains],
-            columns=["Reference Chain", "Target Chain"]
+    with st.expander("Explicit Chain Mapping Options"):
+        if isinstance(default, dict):
+            df = pd.DataFrame(
+                [(ref, default.get(ref, "")) for ref in ref_chains],
+                columns=["Reference Chain", "Target Chain"]
+            )
+        else:
+            df = pd.DataFrame(
+                [(ref, "") for ref in ref_chains],
+                columns=["Reference Chain", "Target Chain"]
+            )
+
+        # Editable table
+        edited_df = st.data_editor(
+            df,
+            num_rows="fixed",
+            key=key,
+            column_config={
+                "Reference Chain": st.column_config.TextColumn("Reference Chain", disabled=True),
+                "Target Chain": st.column_config.SelectboxColumn(
+                    "Target Chain",
+                    options=[""] + list(tgt_chains),  # allow blank
+                    required=False,
+                ),
+            },
+            use_container_width=True,
+            hide_index=True,
         )
-    else:
-        df = pd.DataFrame(
-            [(ref, "") for ref in ref_chains],
-            columns=["Reference Chain", "Target Chain"]
-        )
 
-    # Editable table
-    edited_df = st.data_editor(
-        df,
-        num_rows="fixed",
-        key=key,
-        column_config={
-            "Reference Chain": st.column_config.TextColumn("Reference Chain", disabled=True),
-            "Target Chain": st.column_config.SelectboxColumn(
-                "Target Chain",
-                options=[""] + list(tgt_chains),  # allow blank
-                required=False,
-            ),
-        },
-        use_container_width=True,
-        hide_index=True,
-    )
+        # Convert to dict, skipping blanks
+        mapping = {
+            ref: tgt
+            for ref, tgt in zip(edited_df["Reference Chain"], edited_df["Target Chain"])
+            if tgt  # only keep non-blank
+        }
 
-    # Convert to dict, skipping blanks
-    mapping = {
-        ref: tgt
-        for ref, tgt in zip(edited_df["Reference Chain"], edited_df["Target Chain"])
-        if tgt  # only keep non-blank
-    }
+        # If user left everything blank → return None (auto mode)
+        if not mapping:
+            st.info("No explicit mapping specified → auto mapping will be used.")
+            return None
 
-    # If user left everything blank → return None (auto mode)
-    if not mapping:
-        st.info("No explicit mapping specified → auto mapping will be used.")
-        return None
-
-    return mapping
+        return mapping
 
 
 def get_chain_mappings_for_targets(structures_dict, ref_chains, default_mapping=None, key="mapping"):
@@ -350,14 +351,20 @@ def show_chain_alignment(chain_mapper, ref_start=1, tgt_start=1):
     if chain_mapper is None or chain_mapper.alignment is None:
         st.warning("No alignment available")
         return
+    
+
 
     seqs = [seq for seq in chain_mapper.alignment]
     if len(seqs) < 2:
         st.warning("Alignment has less than 2 sequences")
         return
 
-    ref_seq, tgt_seq = seqs[0], seqs[1]
-    ref_counter, tgt_counter = ref_start, tgt_start
+    ref_seq = chain_mapper.aligned_ref_seq
+    tgt_seq = chain_mapper.aligned_tgt_seq
+    ref_res = extract_res_from_chain(chain_mapper.ref_chain)
+    tgt_res = extract_res_from_chain(chain_mapper.tgt_chain)
+
+    idx_ref, idx_tgt = 0, 0
 
     ref_line, tgt_line = "", ""
 
@@ -367,24 +374,21 @@ def show_chain_alignment(chain_mapper, ref_start=1, tgt_start=1):
 
         # reference residue
         if a != "-":
-            ref_line += (
-                f"<span class='residue' style='background-color:{color}'>"
-                #tooltip allows for hover display of residue number
-                f"{a}<span class='tooltip'>{ref_counter}</span>"
-                f"</span>"
-            )
-            ref_counter += 1
+            res = ref_res[idx_ref]
+            ref_num = f"{res.id[1]}{res.id[2].strip()}"  # includes insertion code if present
+            idx_ref += 1
+            ref_line += f"<span class='residue' style='background-color:{color}'>" \
+                        f"{a}<span class='tooltip'>{ref_num}</span></span>"
         else:
             ref_line += f"<span class='residue' style='background-color:{color}'>{a}</span>"
 
         # target residue
         if b != "-":
-            tgt_line += (
-                f"<span class='residue' style='background-color:{color}'>"
-                f"{b}<span class='tooltip'>{tgt_counter}</span>"
-                f"</span>"
-            )
-            tgt_counter += 1
+            res = tgt_res[idx_tgt]
+            tgt_num = f"{res.id[1]}{res.id[2].strip()}"
+            idx_tgt += 1
+            tgt_line += f"<span class='residue' style='background-color:{color}'>" \
+                        f"{b}<span class='tooltip'>{tgt_num}</span></span>"
         else:
             tgt_line += f"<span class='residue' style='background-color:{color}'>{b}</span>"
 
@@ -404,7 +408,7 @@ def show_chain_alignment(chain_mapper, ref_start=1, tgt_start=1):
     .tooltip {{
         display: none;
         position: absolute;
-        top: -1.5em;
+        top: -0.8em;
         left: 50%;
         transform: translateX(-50%);
         background: #eee;
@@ -437,4 +441,3 @@ def show_chain_alignment(chain_mapper, ref_start=1, tgt_start=1):
     """
 
     st.components.v1.html(html_content, height=50, scrolling=True)
-
