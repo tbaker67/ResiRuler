@@ -111,4 +111,60 @@ def get_coords_from_id(index_map, coords, chain, residue):
     except Exception as e:
         print(f"[ERROR] Unexpected error for chain {chain}, residue {residue}: {e}")
         return None
+    
+def get_CA_from_residue(res):
+    """
+    Assumes the input residue is a biopython residue object
+    """
+    
+    if "CA" in res:
+        return res["CA"].get_coord()
+
+    return None
+
+def get_CB_from_residue(res):
+    """
+    Assumes the input residue is a biopython residue object
+    """
+    
+    if "CB" in res:
+        return res["CB"].get_coord()
+    elif res.get_resname() == "GLY" and "CA" in res:
+        return res["CA"].get_coord()
+    
+    return None
+
+def get_SC_from_residue(res):
+    """
+    gets sidechain coordinate for a given residue based on the centroid of the heavy carbon atoms (not including CA)
+    returns None if it can't find a coordinate
+    Assumes the input residue is a biopython residue object
+    """
+    BACKBONE_ATOMS = {"N", "CA", "C", "O", "OXT"}
+
+    for atom in res:
+
+        sidechain_atom_coords = [atom.get_coord() for atom in res if atom.get_id() not in BACKBONE_ATOMS]
+
+    if sidechain_atom_coords:
+        return np.mean(sidechain_atom_coords, axis=0)
+    
+    ##TODO: Think about how we want to handle this
+    elif res.get_resname() == "GLY" and "CA" in res:
+        return res["CA"].get_coord()
+    
+
+    return None
+        
+
+
+
+
+   
+
+
+
+        
+
+
 

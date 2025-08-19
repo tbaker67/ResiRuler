@@ -1,5 +1,5 @@
 import streamlit as st
-from ui_components.utils import json_mapping_input, create_mapper, chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments
+from ui_components.utils import json_mapping_input, create_mapper, chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments,get_measurement_mode
 from src.resiruler.plotting import plot_distance_difference, plot_interactive_contact_map, plot_all_matrices_ensemble
 import numpy as np
 from Bio.Align import PairwiseAligner, substitution_matrices
@@ -39,8 +39,10 @@ def show_compare_tab():
     ##TODO: Allow for filtering to only matched chains across all
     selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")
 
+    mode = get_measurement_mode(key="compare_measurement_mode")
+
     if st.button("Compare") and st.session_state.mapper:
-        st.session_state.mapper.set_selected_global_coords(selected_chains)
+        st.session_state.mapper.set_selected_global_coords(selected_chains, mode=mode)
         ref_dm, tgt_dms_dict, compare_dms_dict = st.session_state.mapper.calc_matrices()
         
         ref_fig, tgt_figs_dict, compare_figs_dict = plot_all_matrices_ensemble(
