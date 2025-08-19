@@ -441,3 +441,12 @@ def show_chain_alignment(chain_mapper, ref_start=1, tgt_start=1):
     """
 
     st.components.v1.html(html_content, height=50, scrolling=True)
+
+def get_measurement_mode(key="measurement_mode"):
+    option_to_mode = {"C-α":"CA", "C-β":"CB", "Side-Chain Centroid (Heavy Atoms Excluding CA)":"SC"}
+    selected_mode = st.selectbox(
+        "Choose Where to Measure Distances From",
+        options=["C-α", "C-β", "Side-Chain Centroid (Heavy Atoms Excluding CA)"],
+        key=key
+    )
+    return option_to_mode[selected_mode]
