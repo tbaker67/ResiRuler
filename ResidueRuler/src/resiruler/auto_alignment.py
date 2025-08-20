@@ -569,7 +569,7 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
             res_copy = res
             key = (chain.id, res.id)
             #No residue match or not filtering residues
-            if matched_residues is not None and key not in matched_residues:
+            if matched_residues is None or key not in matched_residues:
                 continue
             new_chain.add(res_copy)
 

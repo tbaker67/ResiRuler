@@ -10,14 +10,24 @@ from usalign_wrapper import run_usalign_matrix_only
 from src.resiruler.auto_alignment import filter_and_write_aligned_maps
 
 def apply_transform(structure, rotation, translation):
-    """Apply rotation and translation to atomic coordinates."""
+    """
+    Apply rotation (3x3) and translation (3,) to all atoms in a Bio.PDB Structure,
+    including HETATMs, waters, ligands, and all alternate locations.
+    """
     for model in structure:
         for chain in model:
             for residue in chain:
                 for atom in residue:
-                    coord = atom.coord
-                    new_coord = np.dot(rotation, coord) + translation
-                    atom.coord = new_coord
+                    # Check for disordered atoms (alternate locations)
+                    if atom.is_disordered():
+                        for alt_atom in atom.child_dict.values():
+                            coord = np.asarray(alt_atom.coord, dtype=float)
+                            new_coord = np.dot(rotation, coord) + translation
+                            alt_atom.set_coord(new_coord)
+                    else:
+                        coord = np.asarray(atom.coord, dtype=float)
+                        new_coord = np.dot(rotation, coord) + translation
+                        atom.set_coord(new_coord)
     return structure
 
 def start_pymol_viewer(reference_cif_str, aligned_cif_str):
