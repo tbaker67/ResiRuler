@@ -35,8 +35,8 @@ class DistanceMatrix:
         df = pd.DataFrame({
             'ChainID_Resnum1': [f"{keys[i][0]}-{keys[i][1][1]}{keys[i][1][2]}" for i in triu_i],
             'ChainID_Resnum2': [f"{keys[j][0]}-{keys[j][1][1]}{keys[j][1][2]}" for j in triu_j],
-            #'Coord1': [self.coords[i].tolist() for i in triu_i],  
-            #'Coord2': [self.coords[j].tolist() for j in triu_j],
+            'Coord1': [self.coords[i].tolist() for i in triu_i],  
+            'Coord2': [self.coords[j].tolist() for j in triu_j],
             'Distance': distances
         })
 

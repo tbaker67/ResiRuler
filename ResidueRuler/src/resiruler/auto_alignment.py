@@ -566,7 +566,7 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
 
         new_chain = chain.__class__(chain.id)
         for res in chain.get_residues():
-            res_copy = copy.deepcopy()
+            res_copy = res
             key = (chain.id, res.id)
             #No residue match or not filtering residues
             if matched_residues is not None and key not in matched_residues:

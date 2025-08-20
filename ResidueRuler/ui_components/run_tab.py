@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.colors as mcolors
 from pathlib import Path
-from ui_components.utils import json_mapping_input,chain_selector_ui, create_downloadable_zip, load_structure_if_new, get_threshold
+from ui_components.utils import chain_selector_ui, create_downloadable_zip, load_structure_if_new, get_threshold
 from src.resiruler.structure_parsing import extract_residues_from_structure, convert_to_CA_coords_list
 from src.resiruler.distance_calc import DistanceMatrix
 from src.resiruler.plotting import plot_interactive_contact_map
@@ -108,10 +108,16 @@ def show_run_tab():
             'ChainID_Resnum1': 'ChainID_Resnum2',
             'ChainID_Resnum2': 'ChainID_Resnum1'
         })
+
+        run_df_clean = st.session_state.run_df.copy()
+        run_df_clean['ChainID_Resnum1'] = run_df_clean['ChainID_Resnum1'].astype(str).str.strip()
+        run_df_clean['ChainID_Resnum2'] = run_df_clean['ChainID_Resnum2'].astype(str).str.strip()
+
+        link_selections = link_selections.applymap(lambda x: str(x).strip())
         augmented_links = pd.concat([link_selections, reversed_links], ignore_index=True).drop_duplicates()
 
         # Merge user selections with run dataframe on chain-residue pairs
-        links_df = st.session_state.run_df.merge(augmented_links, on=['ChainID_Resnum1', 'ChainID_Resnum2'])
+        links_df = run_df_clean.merge(augmented_links, on=['ChainID_Resnum1', 'ChainID_Resnum2'])
 
         if mode == "Gradient":
             cmap_obj = mcolors.LinearSegmentedColormap.from_list("custom_gradient", [hex for hex, _ in palette])

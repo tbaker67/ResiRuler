@@ -136,7 +136,7 @@ def show_movement_tab():
 
 
         root_files = {
-        f"{st.session_state.ref_name}_colors.defattr": st.session_state.defatt,
+        f"full_defattr.defattr": st.session_state.defatt,
         "chimera_coloring_script.cxc": st.session_state.chimera_script
     }
 

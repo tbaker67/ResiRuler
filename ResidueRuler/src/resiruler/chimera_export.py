@@ -91,6 +91,8 @@ def generate_multiple_movement_scripts(movement_dfs, ref_name):
         ids += 2
 
     full_cxc_script.write("open full_defattr.defattr \n")
+
+    full_cxc_script.write(f"color #{1}-{ids - 1} grey")
     
     full_cxc_script.write(f"color byattribute r:distance #{1}-{ids - 1} target scab palette 0,#00008B:{vmax / 5:.2f},#20073a:{(2 * vmax  / 5):.2f},#6d1950:{(3 * vmax/ 5):.2f},#bd4545:{ (4 * vmax / 5):.2f},#d48849:{vmax:.2f},#f0d171\n")
 

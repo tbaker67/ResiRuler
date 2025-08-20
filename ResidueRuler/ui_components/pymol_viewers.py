@@ -60,17 +60,17 @@ def draw_links_pymol(df, view, color_mode, **kwargs):
     view.zoomTo()
     return view
 
-def draw_movement_shift_pymol(df, view):
+def draw_movement_shift_pymol(df, view, cmap=plt.cm.get_cmap('plasma')):
     df = df.dropna(subset=['ChainID_Resnum1', 'Distance'])
 
     vmin, vmax = df['Distance'].min(), df['Distance'].max()
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.get_cmap('plasma')
+    
 
-    view.setStyle({}, {})  # reset styles
+    #view.setStyle({}, {})  # reset styles
 
     for _, row in df.iterrows():
-        # Parse chain and residue number from 'C_58'
+        # Parse chain and residue number from 'C-58'
         chain, resi = row['ChainID_Resnum1'].split('-')
 
         dist = row['Distance']
@@ -78,7 +78,7 @@ def draw_movement_shift_pymol(df, view):
         color_str = f'rgb({r},{g},{b})'
 
         # Apply cartoon color to the residue
-        view.setStyle({'chain': chain, 'resi': str(resi)}, {
+        view.setStyle({'chain': chain, 'resi': str(resi[1])}, {
             'cartoon': {'color': color_str}
         })
 
@@ -86,7 +86,7 @@ def draw_movement_shift_pymol(df, view):
     return view
 
 
-def draw_movement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5):
+def draw_movement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5, cmap = plt.cm.get_cmap('plasma')):
     """
     Draws colored vectors and heads from Coord1 to Coord2, colored by Distance.
     """
@@ -100,7 +100,7 @@ def draw_movement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5):
     # Normalize distances to colormap
     vmin, vmax = distances.min(), distances.max()
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.get_cmap('plasma')
+    
 
     for start, end, dist in zip(coords1, coords2, distances):
         r, g, b = [int(255 * c) for c in cmap(norm(dist))[:3]]
@@ -108,16 +108,16 @@ def draw_movement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5):
 
         # Draw line
         view.addLine({
-            'start': {'x': start[0], 'y': start[1], 'z': start[2]},
-            'end':   {'x': end[0],   'y': end[1],   'z': end[2]},
+            'start': {'x': float(start[0]), 'y': float(start[1]), 'z': float(start[2])},
+            'end':   {'x': float(end[0]),   'y': float(end[1]),   'z': float(end[2])},
             'color': color_str,
-            'radius': radius,
+            #'radius': radius,
             'dashed': False
         })
 
         # Draw head sphere at end
         view.addSphere({
-            'center': {'x': end[0], 'y': end[1], 'z': end[2]},
+            'center': {'x': float(end[0]), 'y': float(end[1]), 'z': float(end[2])},
             'color': color_str,
             'radius': head_radius
         })

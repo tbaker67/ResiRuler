@@ -1,5 +1,5 @@
 import streamlit as st
-from ui_components.utils import json_mapping_input, create_mapper, chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments,get_measurement_mode
+from ui_components.utils import chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments,get_measurement_mode
 from src.resiruler.plotting import plot_distance_difference, plot_interactive_contact_map, plot_all_matrices_ensemble
 import numpy as np
 from Bio.Align import PairwiseAligner, substitution_matrices
