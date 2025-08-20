@@ -53,7 +53,7 @@ def discrete_palette_picker(label="Discrete Color Thresholds", default_threshold
 
     return thresholds_colors
 
-def gradient_palette_picker(label="Gradient Palette", default_colors=None):
+def gradient_palette_picker(label="Gradient Palette", default_colors=None, key="palette_picker"):
     st.subheader(label)
 
     num_stops = st.number_input("Number of gradient stops", min_value=2, max_value=10,
@@ -161,7 +161,9 @@ def show_discrete_bar(discrete_mapping, min_val, max_val):
 
 
 def build_gradient_cmap(palette):
-    return LinearSegmentedColormap.from_list("custom", [hex for hex, _ in palette])
+    # Extract RGB tuples, force each component to Python float
+    rgb_list = [tuple(float(c) for c in rgb) for _, rgb in palette]
+    return LinearSegmentedColormap.from_list("custom", rgb_list)
 
 
 def sort_discrete_mapping(mapping):

@@ -1,12 +1,15 @@
 import streamlit as st
 from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol
-from ui_components.utils import json_mapping_input, create_downloadable_zip, create_ensemble_mapper, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_downloadable_zip_grouped, aligner_ui, show_alignments, get_measurement_mode
+from ui_components.utils import create_downloadable_zip, create_ensemble_mapper, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_downloadable_zip_grouped, aligner_ui, show_alignments, get_measurement_mode,  struct_to_temp_cif
+from ui_components.color_mapping_utils import gradient_palette_picker, build_gradient_cmap, show_gradient_bar
+from ui_components.molstar_viewers import create_distance_shift_builder, write_movement_annotations
 from src.resiruler.distance_calc import calc_difference_from_mapper
 from src.resiruler.plotting import plot_colorbar
 from src.resiruler.chimera_export import generate_multiple_bilds, generate_multiple_movement_scripts
 import os
 from pathlib import Path
 from Bio.Align import PairwiseAligner, substitution_matrices
+import json
 
 def show_movement_tab():
     st.header("Movement Analysis Between Aligned Structures")
@@ -64,6 +67,74 @@ def show_movement_tab():
     
     if st.session_state.movement_dfs is not None:
 
+        default_colors = ["#00008B","#20073a", "#6d1950", "#bd4545", "#d48849", "#f0d171"]
+        # Show gradient color picker and preview
+
+        palette = gradient_palette_picker(default_colors=default_colors, key="movement_palette_picker")
+        show_gradient_bar(palette, min_val=0, max_val=5)
+        cmap_obj = build_gradient_cmap(palette)
+
+        structure_choices = {
+        f.name[:-4]:f for f in tgt_cifs
+        }
+        
+
+        selected_structure = st.selectbox(
+        "Select structure for visualization",
+        options=list(structure_choices.keys())
+        )
+        
+       
+       
+        if "vector_view" in st.session_state:
+            del st.session_state.vector_view
+
+        
+        viewer1 = start_pymol_viewer(ref_cif)
+        st.session_state.vector_view = draw_movement_vectors_py3dmol(
+            st.session_state.movement_dfs[selected_structure], viewer1, cmap=cmap_obj
+        )
+        st.subheader("Movement Vectors PyMOL Visualization")
+        vector_html = st.session_state.vector_view._make_html()
+        st.components.v1.html(vector_html, height=800, width=1600)
+
+        # create a molstar view builder
+        if "molstar_builder" not in st.session_state:
+            st.session_state.molstar_builder = create_distance_shift_builder()
+            
+        builder = st.session_state.molstar_builder
+
+        # create temp files for the builder to read in
+        ref_cif_path = struct_to_temp_cif(ref_structure)
+        tgt_cif_path = struct_to_temp_cif(tgt_structures[selected_structure])
+
+        annotations = write_movement_annotations(st.session_state.movement_dfs[selected_structure], cmap=cmap_obj)
+        annotations_json = json.dumps(annotations)
+
+        with struct_to_temp_cif(ref_structure) as ref_cif_path, \
+             struct_to_temp_cif(tgt_structures[selected_structure]) as tgt_cif_path:
+
+            ref_cif_data = open(ref_cif_path).read()
+            tgt_cif_data = open(tgt_cif_path).read()
+            builder.molstar_streamlit(
+                data={"local.cif": ref_cif_data, "annotations.json": annotations_json},
+                width=1600,
+                height=600,
+            )
+
+            annotations2 = write_movement_annotations(
+                st.session_state.movement_dfs[selected_structure], ref=False, cmap=cmap_obj
+            )
+            annotations_json2 = json.dumps(annotations2)
+            builder.molstar_streamlit(
+                data={"local.cif": tgt_cif_data, "annotations.json": annotations_json2},
+            )
+
+        
+        st.subheader("Movement Data")
+        st.dataframe(st.session_state.movement_dfs[selected_structure])
+
+
         root_files = {
         f"{st.session_state.ref_name}_colors.defattr": st.session_state.defatt,
         "chimera_coloring_script.cxc": st.session_state.chimera_script
@@ -104,46 +175,4 @@ def show_movement_tab():
             file_name="resi_ruler_movement_output.zip",
             mime="application/zip"
         )
-
-        st.subheader("Color Legend (Distance Shift)")
-        #min_shift = st.session_state.movement_df['Distance'].min()
-        #max_shift = st.session_state.movement_df['Distance'].max()
-        #fig = plot_colorbar(min_shift, max_shift, cmap_name="plasma")  
-        #st.pyplot(fig)
-
-
-        structure_choices = {
-        f.name[:-4]:f for f in tgt_cifs
-        }
-        
-
-        selected_structure = st.selectbox(
-        "Select structure for visualization",
-        options=list(structure_choices.keys())
-        )
-        
-        # Initialize viewer from chosen file
-        viewer1 = start_pymol_viewer(ref_cif)
-        viewer2 = start_pymol_viewer(ref_cif)
-
-        # Draw both movement visualizations
-        st.session_state.movement_view = draw_movement_shift_pymol(
-        st.session_state.movement_dfs[selected_structure], viewer1
-
-        )
-        st.session_state.vector_view = draw_movement_vectors_py3dmol(
-        st.session_state.movement_dfs[selected_structure], viewer2
-        )
-        st.subheader("Distance Shift Visualization")
-        html = st.session_state.movement_view._make_html()
-        st.components.v1.html(html, height=600, width=1000)
-        
-
-        st.subheader("Movement Vectors Pymol Visualization")
-        vector_html = st.session_state.vector_view._make_html()
-        st.components.v1.html(vector_html, height=600, width=1000)
-
-        st.subheader("Movement Data")
-        st.dataframe(st.session_state.movement_dfs[selected_structure])
-
 

@@ -9,33 +9,31 @@ from io import BytesIO
 import zipfile
 from src.resiruler.auto_alignment import StructureMapper, EnsembleMapper
 from src.resiruler.structure_parsing import load_structure, extract_res_from_chain
+from contextlib import contextmanager
+from Bio.PDB.mmcifio import MMCIFIO
+
+@contextmanager 
+def struct_to_temp_cif(structure):
+    """
+    Create a temporary CIF file for a Bio.PDB structure.
+    Automatically deletes the file after use.
+    """
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".cif")
+    try:
+        io = MMCIFIO()
+        io.set_structure(structure)
+        io.save(tmp.name)
+        tmp.close()
+        yield tmp.name
+    finally:
+        if os.path.exists(tmp.name):
+            os.unlink(tmp.name)
 
 def save_temp_file(uploaded_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[-1]) as tmp_file:
         tmp_file.write(uploaded_file.getbuffer())
         return tmp_file.name
     
-def json_mapping_input(label, default,key):
-    st.write("Enter JSON mapping")
-    if isinstance(default, dict):
-        default_json = json.dumps(default, indent=2)
-    elif isinstance(default, str):
-        default_json = default
-    else:
-        default_json = '{}'
-
-    user_input = st.text_area(label, height=200, value=default_json, key=key)
-
-    try:
-        mapping = json.loads(user_input)
-        if isinstance(mapping, dict):
-            st.success("JSON parsed successfully!")
-            st.json(mapping)
-            return mapping
-        else:
-            st.error("Input must be a JSON object (dictionary).")
-    except json.JSONDecodeError as e:
-        st.error(f"Invalid JSON: {e.msg}")
 
 def embed_local_images(markdown_text, base_path):
     """
@@ -64,19 +62,6 @@ def create_downloadable_zip(files_dict):
             z.writestr(filename, content)
     buffer.seek(0)
     return buffer
-
-def create_mapper(structure1, structure2, chain_mapping, threshold):
-    if not structure1 or not structure2:
-        raise ValueError("Missing a structure.")
-    
-    mapper = StructureMapper(structure1, structure2)
-
-    if chain_mapping:
-        mapper.map_chains_explicit(chain_mapping)
-    else:
-        mapper.map_chains(threshold=threshold)
-    
-    return mapper
 
 def create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, threshold, aligner):
     ensemble_mapper = EnsembleMapper(ref_structure, aligner)
