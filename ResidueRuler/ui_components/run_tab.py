@@ -9,7 +9,7 @@ from src.resiruler.plotting import plot_interactive_contact_map
 from src.resiruler.chimera_export import generate_chimera_link_script
 from ui_components.pymol_viewers import start_pymol_viewer, draw_links_pymol
 from ui_components.color_mapping_utils import (
-    get_coloring_mode_and_values,
+    get_coloring_values,
     discrete_palette_picker,
     show_gradient_bar,
     show_discrete_bar,
@@ -78,7 +78,12 @@ def show_run_tab():
     st.session_state.setdefault("link_pymol", None)
 
     # Use utility to get coloring mode and value range from user
-    mode, min_val, max_val = get_coloring_mode_and_values()
+    st.title("Color Mapping")
+
+
+    mode = st.radio("Coloring Mode", ["Gradient", "Discrete Mapping"], horizontal=True)
+
+    min_val, max_val = get_coloring_values()
 
     if min_val >= max_val:
         st.error("Min value must be less than max value")
@@ -88,7 +93,7 @@ def show_run_tab():
         # Show gradient color picker and preview
         palette = gradient_palette_picker()
         show_gradient_bar(palette, min_val, max_val)
-        cmap_obj = build_gradient_cmap(palette)
+        cmap_obj = build_gradient_cmap(palette, min_val, max_val)
     else:
         # Show discrete mapping editors and preview
         discrete_mapping = discrete_palette_picker(

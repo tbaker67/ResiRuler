@@ -4,25 +4,21 @@ import matplotlib.colors as mcolors
 from matplotlib.colors import LinearSegmentedColormap
 
 
-def get_coloring_mode_and_values():
+def get_coloring_values(min=0, max=100):
     """
-    UI widget for choosing color mode and min/max value.
-    Returns: mode (str), min_val (float), max_val (float)
+    UI widget for choosing min/max value.
     """
-    st.title("Color Mapping")
-
-    mode = st.radio("Coloring Mode", ["Gradient", "Discrete Mapping"], horizontal=True)
 
     col1, col2 = st.columns(2)
     with col1:
-        min_val = st.number_input("Min value", value=0.0)
+        min_val = st.number_input("Min value", value=min)
     with col2:
-        max_val = st.number_input("Max value", value=100.0)
+        max_val = st.number_input("Max value", value=max)
 
     if min_val >= max_val:
         st.error("Min value must be less than max value")
 
-    return mode, min_val, max_val
+    return min_val, max_val
 
 
 def discrete_palette_picker(label="Discrete Color Thresholds", default_thresholds=None, default_colors=None):
@@ -65,8 +61,8 @@ def gradient_palette_picker(label="Gradient Palette", default_colors=None, key="
         color = st.color_picker(f"Color stop {i + 1}", value=default)
         colors.append(color)
 
-    # Convert to format: [(hex, (r, g, b)), ...]
-    palette = [(hex_color, mcolors.to_rgb(hex_color)) for hex_color in colors]
+
+    palette = [hex_color for hex_color in colors]
 
     return palette
 
@@ -74,7 +70,7 @@ def show_gradient_bar(palette, min_val, max_val):
     """
     Render gradient color bar as HTML
     """
-    gradient_colors = ", ".join([hex for hex, _ in palette])
+    gradient_colors = ", ".join([hex for hex in palette])
     gradient_css = f"linear-gradient(to right, {gradient_colors})"
 
     gradient_html = f"""
@@ -160,10 +156,18 @@ def show_discrete_bar(discrete_mapping, min_val, max_val):
     components.html(bar_html, height=50)
 
 
-def build_gradient_cmap(palette):
-    # Extract RGB tuples, force each component to Python float
-    rgb_list = [tuple(float(c) for c in rgb) for _, rgb in palette]
-    return LinearSegmentedColormap.from_list("custom", rgb_list)
+def build_gradient_cmap(palette, vmin, vmax):
+    """
+    Builds a matplot color map based on the provided palette which will evenly space out each color across the range [vmin, vmax] after normalized to [0,1]
+    """
+    positions = [vmin + i * (vmax - vmin) / (len(palette) - 1) for i in range(len(palette))]
+    positions = [(pos - vmin)/(vmax - vmin) for pos in positions]  # matplot requires normalized range to [0,1]
+
+    
+    pos_rgb = list(zip(positions, palette))
+
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", pos_rgb)
+    return cmap
 
 
 def sort_discrete_mapping(mapping):
