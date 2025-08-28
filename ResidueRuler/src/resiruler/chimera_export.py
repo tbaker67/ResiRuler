@@ -68,15 +68,27 @@ def generate_chimera_link_script(df, chains = None, color_mode="discrete", **kwa
 
     return output.getvalue()
 
-def generate_chimera_palette_string(palette, vmin, vmax):
+def generate_chimera_coloring_palette_string(palette, vmin, vmax):
 
-    palette_string = f"{vmin}, {palette[0]}"
+    palette_string = f"{vmin:.2f},{palette[0]}"
 
     #Evenly space the palette colors with vmin and vmax at the extremes
     #This also ensures colors match across real-valued and normalized distances as long as they are normalized along (vmin, vmax)
     for i in range(1,len(palette)):
         val = vmin + i * (vmax - vmin) / (len(palette) - 1)
-        palette_string += f":{val, palette[i]}"
+        palette_string += f":{val:.2f},{palette[i]}"
+    
+    return palette_string
+
+def generate_chimera_key_palette_string(palette, vmin, vmax):
+
+    palette_string = f"{palette[0]}:{vmin:.2f} "
+
+    #Evenly space the palette colors with vmin and vmax at the extremes
+    #This also ensures colors match across real-valued and normalized distances as long as they are normalized along (vmin, vmax)
+    for i in range(1,len(palette)):
+        val = vmin + i * (vmax - vmin) / (len(palette) - 1)
+        palette_string += f" {palette[i]}:{val:.2f} "
     
     return palette_string
 
@@ -108,11 +120,12 @@ def generate_multiple_movement_scripts(movement_dfs, ref_name, palette, vmin, vm
 
         ids += 2
 
-    chimera_palette_string = generate_chimera_palette_string(palette, vmin, vmax)
+    chimera_coloring_palette_string = generate_chimera_coloring_palette_string(palette, vmin, vmax)
+    chimera_key_palette_string = generate_chimera_key_palette_string(palette, vmin, vmax)
     full_cxc_script.write("open full_defattr.defattr \n")
     full_cxc_script.write(f"color #{1}-{ids - 1} grey \n")
-    full_cxc_script.write(f"color byattribute r:distance #{1}-{ids - 1} target scab palette {chimera_palette_string}\n")
-    full_cxc_script.write(f"key {chimera_palette_string}\n")
+    full_cxc_script.write(f"color byattribute r:distance #{1}-{ids - 1} target scab palette {chimera_coloring_palette_string}\n")
+    full_cxc_script.write(f"key {chimera_key_palette_string}\n")
 
     pml_palette_string = generate_pml_palette_string(palette)
     full_pml_script.write(f'spectrum properties["distance"], {pml_palette_string}')

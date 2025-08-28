@@ -34,11 +34,10 @@ def create_distance_shift_builder(
     
     return builder
 
-def write_movement_annotations(df, cmap=plt.cm.get_cmap("plasma"), ref=True):
+def write_movement_annotations(df, cmap, vmin, vmax, ref=True):
     """Generate residue color annotations for Mol* viewer."""
     annotations = []
     df = df.dropna(subset=["Coord1", "Coord2", "Distance"])
-    vmin, vmax = df["Distance"].min(), df["Distance"].max()
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
 
     for _, row in df.iterrows():
