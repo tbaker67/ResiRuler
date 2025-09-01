@@ -23,18 +23,20 @@ def show_compare_tab():
 
        
     #get threshold and do alignments
-    pct_id_threshold = get_threshold("Set a minimum Pct Identity Threshold for matching chains together", "95.0")
+    
     
     st.session_state.setdefault("mapper", None)
 
-    aligner = aligner_ui("Compare Aligner")
+    st.subheader("Protein Pairwise Aligner Settings")
+    protein_aligner = aligner_ui(protein=True, key_prefix="protein compare aligner")
 
-    if st.button("Map"):
-        st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, aligner)
-    
+    st.subheader("Nucleotide Pairwise Aligner Settings")
+    nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide compare aligner")
 
-    if st.session_state.mapper:
-        show_alignments(st.session_state.mapper, key="compare_alignment")
+    pct_id_threshold = get_threshold("Set a minimum Pct Identity Threshold for matching chains together", "95.0","compare")
+
+    if st.button("Map Chains", key = "map compare chains"):
+        st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, protein_aligner, nucleotide_aligner)
         
     ##TODO: Allow for filtering to only matched chains across all
     selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")

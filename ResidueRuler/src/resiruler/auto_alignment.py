@@ -2,7 +2,7 @@ import Bio
 from Bio.Align import PairwiseAligner, substitution_matrices
 from Bio.PDB import MMCIFParser, MMCIFIO, Structure, Model
 from io import StringIO
-from .structure_parsing import extract_res_from_chain, extract_seq_from_chain, get_CA_from_residue, get_CB_from_residue, get_SC_from_residue
+from .structure_parsing import extract_res_from_chain, extract_seq_from_chain, get_CA_from_residue, get_CB_from_residue, get_SC_from_residue, get_C1prime_from_residue, ChainCollection
 from .distance_calc import DistanceMatrix, CompareDistanceMatrix
 import numpy as np
 from scipy.optimize import linear_sum_assignment
@@ -13,7 +13,7 @@ class ChainMapper:
     """
     ChainMapper class maps two corresponding chains in a reference and target structure
     """
-    def __init__(self, ref_chain, ref_seq, tgt_chain, tgt_seq, alignment):
+    def __init__(self, ref_chain, ref_seq, aligned_ref_seq, tgt_chain, tgt_seq, aligned_tgt_seq, alignment, type):
         self.ref_chain = ref_chain
         self.ref_seq = ref_seq
         self.ref_start=None
@@ -24,9 +24,10 @@ class ChainMapper:
 
         self.alignment = alignment
 
-        self.aligned_ref_seq = alignment[0]
-        self.aligned_tgt_seq = alignment[1]
+        self.aligned_ref_seq = aligned_ref_seq
+        self.aligned_tgt_seq = aligned_tgt_seq
 
+        self.type = type
         self.res_id_mapping = self.calc_residue_mapping()
 
     def calc_percent_identity(self):
@@ -94,7 +95,7 @@ class ChainMapper:
 
         return res_id_mapping
     
-    def get_aligned_coord_lists(self, mode="CA"):
+    def get_aligned_coord_lists(self, mode):
         """
         Calculates the aligned CA coordinate lists for residues between mapped chains
         These can be index via the index map which stores a simple way to use 
@@ -124,6 +125,10 @@ class ChainMapper:
             elif mode == "SC":
                 ref_coord = get_SC_from_residue(ref_res)
                 tgt_coord = get_SC_from_residue(tgt_res)
+            
+            elif mode =="C1'":
+                ref_coord = get_C1prime_from_residue(ref_res)
+                tgt_coord = get_C1prime_from_residue(tgt_res)
             
             else:
                 print("Improper Mode Selected")
@@ -175,12 +180,14 @@ class StructureMapper:
     Mapping is based on PCT identities and tiebreaks based on RMSD. It is most recommended to map only using aligned structures
     Otherwise the map may struggle a bit (This problem only really persists for symmetric assemblies however)
     """
-    def __init__(self, ref_structure, tgt_structure, aligner=None):
+    def __init__(self, ref_structure, tgt_structure, protein_aligner, nucleotide_aligner):
         #self.map_id = map_id
         self.ref_structure = ref_structure
         self.tgt_structure = tgt_structure
-        self.aligner = self.aligner = aligner or self._default_aligner()
         self.chain_mappings = {} # ref_chain_id -> ChainMapping object 
+
+        self.protein_aligner = protein_aligner
+        self.nucleotide_aligner = nucleotide_aligner
 
         self.matched_ref_chains = set()
         self.matched_tgt_chains = set()
@@ -196,6 +203,7 @@ class StructureMapper:
         aligner.left_open_gap_score = 1
         
         return aligner
+    
     
     def get_chain_sequence(self, structure, chain):
         key = (id(structure), chain.id)
@@ -215,81 +223,125 @@ class StructureMapper:
         ref_chains = list(ref_structure.get_chains())
         tgt_chains = list(tgt_structure.get_chains())
 
+        ref_collection = ChainCollection(ref_structure)
+        tgt_collection = ChainCollection(tgt_structure)
+
         valid_pairs = []
         scores = {} #(i,j) -> score
         mappings = {} #(i,j) - > ChainMapper
 
         # Collect valid combinations of chains (above the pct identity threshold)
         # So that we can assign matches via the optimal linear sum assignmnet
-        for i, ref_chain in enumerate(ref_chains):
-            ref_seq = self.get_chain_sequence(ref_structure, ref_chain)
 
-            for j, tgt_chain in enumerate(tgt_chains):
-                tgt_seq = self.get_chain_sequence(tgt_structure, tgt_chain)
+        dna_aligner = PairwiseAligner()
+        dna_aligner.mode='global'
+        
+        dna_aligner.open_gap_score = -10
+        dna_aligner.extend_gap_score = -1
+        dna_aligner.match_score=5
+        dna_aligner.mismatch_score=-4
 
-                alignment = self.aligner.align(ref_seq, tgt_seq)[0]
-                potential_map = ChainMapper(ref_chain, ref_seq, tgt_chain, tgt_seq, alignment)
+        for ref_id, tgt_id, ref_info, tgt_info in ref_collection.valid_pairs(tgt_collection):
 
-                percent_identity = potential_map.calc_percent_identity()
-                #print(f"Testing chains {ref_chain.id} vs {tgt_chain.id} — %ID: {percent_identity:.2f}")
+        
+            
+            if ref_info.type == "protein":
+                alignment = self.protein_aligner.align(ref_info.seq, tgt_info.seq)[0]
+                aligned_ref_seq = alignment[0]
+                aligned_tgt_seq = alignment[1]
+            elif ref_info.type == "dna":
+                alignment = self.nucleotide_aligner.align(ref_info.seq, tgt_info.seq)[0]
+                aligned_ref_seq = alignment[0]
+                aligned_tgt_seq = alignment[1]
+
+            elif ref_info.type == 'rna':
+                #Substitution Matrices for the pairwise aligners are all set up to use T rather than U
+                #So we must replace U with T before aligning and then shift it back
+                converted_ref_seq = ref_info.seq.replace("U","T")
+                converted_tgt_seq = tgt_info.seq.replace("U","T")
+
+                alignment = self.nucleotide_aligner.align(converted_ref_seq, converted_tgt_seq)[0]
+                #Change T's back to U's
+                aligned_ref_seq = alignment[0].replace("T","U")
+                aligned_tgt_seq = alignment[1].replace("T","U")
+            
+            #unknown chain type so just skip it
+            else:
+                print(f"[WARNING] skipping chain {ref_id} due to an unknown chain type")
+                continue
+
+            potential_map = ChainMapper(ref_info.chain, ref_info.seq,aligned_ref_seq, tgt_info.chain, tgt_info.seq,aligned_tgt_seq, alignment, ref_info.type)
+
+            percent_identity = potential_map.calc_percent_identity()
+            #print(f"Testing chains {ref_chain.id} vs {tgt_chain.id} — %ID: {percent_identity:.2f}")
                 
 
-                if percent_identity < threshold:
-                    continue
+            if percent_identity < threshold:
+                continue
+            
+            # rmsd calculated using CA for protein and C1' for nucleic acids 
+            if potential_map.type == "protein":
+                aligned_ref_coords, aligned_tgt_coords, _ = potential_map.get_aligned_coord_lists("CA")
+            
+            elif potential_map.type == "dna" or potential_map.type == "rna":
+                aligned_ref_coords, aligned_tgt_coords, _ = potential_map.get_aligned_coord_lists("C1'")
 
-                aligned_ref_coords, aligned_tgt_coords, _ = potential_map.get_aligned_coord_lists()
-                rmsd = potential_map.calc_rmsd(
-                    aligned_ref_coords,
-                    aligned_tgt_coords
-                )
+            rmsd = potential_map.calc_rmsd(
+                aligned_ref_coords,
+                aligned_tgt_coords
+            )
 
-                score = percent_identity - 1e-6 * rmsd  # prioritize identity, break ties with RMSD
-                valid_pairs.append((i, j))
-                scores[(i, j)] = score
-                mappings[(i, j)] = potential_map
+            
+            #no division by zero unless pct id threshold <= 0
+
+            score = alignment.score / len(aligned_ref_coords) - 1e-6 * (rmsd) # prioritize alignment score, break ties with RMSD
+            valid_pairs.append((ref_id, tgt_id))
+            scores[(ref_id, tgt_id)] = score
+            mappings[(ref_id, tgt_id)] = potential_map
 
         if not valid_pairs:
             print(" No valid chain matches above threshold.")
             return
-
+        
         # Build score matrix using only the valid matchings
-        rows = sorted(set(i for i, _ in valid_pairs))
-        cols = sorted(set(j for _, j in valid_pairs))
-        row_idx_map = {i: idx for idx, i in enumerate(rows)}
-        col_idx_map = {j: idx for idx, j in enumerate(cols)}
+        rows = sorted(set(ref_id for ref_id, _ in valid_pairs))
+        cols = sorted(set(tgt_id for _, tgt_id in valid_pairs))
 
-        reduced_matrix = np.full((len(rows), len(cols)), 1e9)  # high cost by default, this will be the value for an unmatched reference chain
+        row_idx_map = {ref_id: i for i, ref_id in enumerate(rows)}
+
+        col_idx_map = {tgt_id: j for j, tgt_id in enumerate(cols)}
+
+        cost_matrix = np.full((len(rows), len(cols)), 1e9)  # high cost by default, this will be the value for an unmatched reference chain
 
 
-        for (i, j), score in scores.items():
-            r = row_idx_map[i]
-            c = col_idx_map[j]
-            reduced_matrix[r, c] = -score  # negate as linear sum assignment finds the optimum minimum solution
+        for (ref_id, tgt_id), score in scores.items():
+            i = row_idx_map[ref_id]
+            j = col_idx_map[tgt_id]
+            cost_matrix[i, j] = -score  # negate as linear sum assignment finds the optimum minimum solution
 
        
-        row_ind, col_ind = linear_sum_assignment(reduced_matrix)
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
 
         # Recover global i,j which is usable to get the mappings
-        for r_idx, c_idx in zip(row_ind, col_ind):
-            #Get the indices for the actual mappings
-            i = rows[r_idx]
-            j = cols[c_idx]
+        for i, j in zip(row_ind, col_ind):
 
-            if (i, j) not in mappings:
-                print(f"Skipping assignment ({i}, {j}) — not in valid mappings")
-                continue
+            if cost_matrix[i, j] != 1e9: #valid match
+                ref_id = rows[i]
+                tgt_id = cols[j]
 
-            mapping = mappings[(i, j)]
-            ref_id = mapping.ref_chain.id
-            tgt_id = mapping.tgt_chain.id
+                if (ref_id, tgt_id) not in mappings:
+                    print(f"Skipping assignment ({i}, {j}) — not in valid mappings")
+                    continue
 
-            self.chain_mappings[ref_id] = mapping
-            self.matched_ref_chains.add(ref_id)
-            self.matched_tgt_chains.add(tgt_id)
-            print(f"Matched {ref_id} → {tgt_id} with score {scores[(i, j)]:.4f}")
+                mapping = mappings[(ref_id, tgt_id)]
+                self.chain_mappings[ref_id] = mapping
+
+                self.matched_ref_chains.add(ref_id)
+                self.matched_tgt_chains.add(tgt_id)
+                print(f"Matched {ref_id} → {tgt_id} with score {scores[(ref_id, tgt_id)]:.4f}")
 
     def map_chains_explicit(self, explicit_chain_mapping):
-        for ref_chain_id, tgt_chain_id in explicit_chain_mapping.items():
+        for ref_chain_id, (tgt_chain_id, type)in explicit_chain_mapping.items():
             ref_chain = self.ref_structure[0][ref_chain_id]
             tgt_chain = self.tgt_structure[0][tgt_chain_id]
 
@@ -301,7 +353,7 @@ class StructureMapper:
 
             alignment = self.aligner.align(ref_seq, tgt_seq)[0]
 
-            self.chain_mappings[ref_chain_id] = ChainMapper(ref_chain, ref_seq, tgt_chain, tgt_seq, alignment)
+            self.chain_mappings[ref_chain_id] = ChainMapper(ref_chain, ref_seq, tgt_chain, tgt_seq, alignment, type)
 
     def calc_matrices (self, selected_chains=None):
         """
@@ -323,10 +375,16 @@ class StructureMapper:
         tgt_dm = DistanceMatrix(coords_tgt, index_map)
         return ref_dm, tgt_dm, CompareDistanceMatrix(ref_dm, tgt_dm, res_id_map)
     
-    def get_selected_mapping(self, selected_chains=None, mode="CA"):
+    def get_selected_mapping(self, selected_chains=None, protein_mode="CA", nucleic_mode="C1'"):
         """
         Extract a mapping from the ChainMapper Objects based on a selection of chains
         """
+        #dictionary to automatically choose correct mode
+        type_to_mode = {
+            "protein":protein_mode,
+            "dna":nucleic_mode,
+            "rna":nucleic_mode
+        }
         coords_ref_list = []
         coords_tgt_list = []
         index_map = {} 
@@ -338,7 +396,7 @@ class StructureMapper:
                 print(f"[INFO] Skipping chain {chain_id} (not in selected_chains)")
                 continue
             
-            aligned_ref_coords, aligned_tgt_coords, chain_index_map = cm.get_aligned_coord_lists(mode=mode)
+            aligned_ref_coords, aligned_tgt_coords, chain_index_map = cm.get_aligned_coord_lists(type_to_mode[cm.type])
             
             coords_ref_list.append(np.array(aligned_ref_coords))
             coords_tgt_list.append(np.array(aligned_tgt_coords))
@@ -365,9 +423,10 @@ class EnsembleMapper:
     All coordinates are aligned to a single set of reference cordinates and thus corresponding coordinates can all be found using the same index
     """
 
-    def __init__(self, ref_structure, aligner):
+    def __init__(self, ref_structure, protein_aligner, nucleotide_aligner):
         self.ref_structure=ref_structure
-        self.aligner = aligner
+        self.protein_aligner = protein_aligner
+        self.nucleotide_aligner = nucleotide_aligner
         self.coords_ref = None
         self.structure_mappings = {} # Structure Name -> StructureMapper
         self.global_index_mapping = {} # (ChainID, ResID) -> index (for use with aligned tgt coords)
@@ -375,7 +434,7 @@ class EnsembleMapper:
         self.coords_targets_dict= {} # Structure Name -> aligned_tgt_coords
     
     def add_structure(self, tgt_structure_name, tgt_structure, threshold, explicit_mapping=None):
-        structure_mapping = StructureMapper(self.ref_structure, tgt_structure, self.aligner)
+        structure_mapping = StructureMapper(self.ref_structure, tgt_structure, self.protein_aligner, self.nucleotide_aligner)
         if explicit_mapping:
             structure_mapping.map_chains_explicit(explicit_mapping)
         else:
@@ -419,7 +478,7 @@ class EnsembleMapper:
         return common_ref_residues
 
 
-    def set_selected_global_coords(self, selected_chains=None, mode="CA"):
+    def set_selected_global_coords(self, selected_chains=None, protein_mode="CA", nucleic_mode = "C1'"):
         if not self.structure_mappings:
             raise ValueError("No target structures added yet.")
             
@@ -429,7 +488,7 @@ class EnsembleMapper:
         #now we have a set of residues that got matched in all structure mappings
         common_ref_residues = self.get_common_ref_residues(selected_chains)
 
-        #chains_included = {c for c, _ in common_ref_residues}
+        
        
 
         sorted_residues = sorted(common_ref_residues) # consistent order (Alphabetical by chain first, then residue number, then insertion code)
@@ -439,7 +498,7 @@ class EnsembleMapper:
         coords_ref_list = []
         global_index_mapping = {}
         
-        coords_ref,_ ,index_map , _ = first_mapping.get_selected_mapping(selected_chains, mode)
+        coords_ref,_ ,index_map , _ = first_mapping.get_selected_mapping(selected_chains, protein_mode, nucleic_mode)
         
         #Get the reference coordinates
         for idx, res_id in enumerate(sorted_residues):
@@ -456,7 +515,7 @@ class EnsembleMapper:
         #Map the target coordinates for each mapper
         for name, structure_mapping in self.structure_mappings.items():
 
-            _,coords_tgt,index_map,res_id_map = structure_mapping.get_selected_mapping(selected_chains, mode)
+            _,coords_tgt,index_map,res_id_map = structure_mapping.get_selected_mapping(selected_chains, protein_mode, nucleic_mode)
 
             #filter res_id map to only include the relevant residues, now we can assume anything in this is actually mapped in across all structures
             #Only necessary if we iterate through this mapping, otherwise we can get away with not filtering 

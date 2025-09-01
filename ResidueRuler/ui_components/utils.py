@@ -11,6 +11,7 @@ from src.resiruler.auto_alignment import StructureMapper, EnsembleMapper
 from src.resiruler.structure_parsing import load_structure, extract_res_from_chain
 from contextlib import contextmanager
 from Bio.PDB.mmcifio import MMCIFIO
+from Bio.Align import substitution_matrices
 
 @contextmanager 
 def struct_to_temp_cif(structure):
@@ -63,8 +64,8 @@ def create_downloadable_zip(files_dict):
     buffer.seek(0)
     return buffer
 
-def create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, threshold, aligner):
-    ensemble_mapper = EnsembleMapper(ref_structure, aligner)
+def create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, threshold, protein_aligner, nucleotide_aligner):
+    ensemble_mapper = EnsembleMapper(ref_structure, protein_aligner=protein_aligner, nucleotide_aligner=nucleotide_aligner)
 
     for structure_name, tgt_structure in tgt_structures.items():
         ensemble_mapper.add_structure(structure_name, tgt_structure,threshold, chain_mappings[structure_name])
@@ -159,15 +160,9 @@ def chain_mapping_input(ref_chains, tgt_chains, default=None, key="chain_mapping
 
     # Build default DataFrame
     with st.expander("Explicit Chain Mapping Options"):
-        if isinstance(default, dict):
-            df = pd.DataFrame(
-                [(ref, default.get(ref, "")) for ref in ref_chains],
-                columns=["Reference Chain", "Target Chain"]
-            )
-        else:
-            df = pd.DataFrame(
-                [(ref, "") for ref in ref_chains],
-                columns=["Reference Chain", "Target Chain"]
+        df = pd.DataFrame(
+            [(ref, "","") for ref in ref_chains],
+            columns=["Reference Chain", "Target Chain", "Chain Type"]
             )
 
         # Editable table
@@ -177,10 +172,16 @@ def chain_mapping_input(ref_chains, tgt_chains, default=None, key="chain_mapping
             key=key,
             column_config={
                 "Reference Chain": st.column_config.TextColumn("Reference Chain", disabled=True),
+                
                 "Target Chain": st.column_config.SelectboxColumn(
                     "Target Chain",
                     options=[""] + list(tgt_chains),  # allow blank
                     required=False,
+                ),
+
+                "Chain Type": st.column_config.SelectboxColumn(
+                    "Chain Type",
+                    options=[""] + ["protein", "dna", "rna"]
                 ),
             },
             use_container_width=True,
@@ -189,8 +190,8 @@ def chain_mapping_input(ref_chains, tgt_chains, default=None, key="chain_mapping
 
         # Convert to dict, skipping blanks
         mapping = {
-            ref: tgt
-            for ref, tgt in zip(edited_df["Reference Chain"], edited_df["Target Chain"])
+            ref: (tgt, type) 
+            for ref, tgt, type in zip(edited_df["Reference Chain"], edited_df["Target Chain"], edited_df['Chain Type'])
             if tgt  # only keep non-blank
         }
 
@@ -221,8 +222,8 @@ def get_chain_mappings_for_targets(structures_dict, ref_chains, default_mapping=
 
     return mappings
 
-def get_threshold(label, default):
-    threshold_input = st.text_input(label, value=default)
+def get_threshold(label, default, key):
+    threshold_input = st.text_input(label, value=default, key=key)
     try:
         return float(threshold_input)
     except ValueError:
@@ -259,20 +260,30 @@ def create_downloadable_zip_grouped(file_groups):
 
 from Bio.Align import PairwiseAligner, substitution_matrices
 
-def aligner_ui(key_prefix="aligner"):
+PROTEIN_SUBSTITUTION_MATRICES = [
+    "BLOSUM62","BLOSUM45", "BLOSUM50", "BLOSUM89", "BLOSUM90", "BLASTP", "DAYHOFF", "FENG", "GENETIC", "GONNET1992", "JOHNSON", "JONES","LEVIN","MCLACHLAN", "MDM78", 
+    "BENNER22","BENNER6", "BENNER74", "PAM250", "PAM30", "PAM70", "RAO", "RISLER"
+]
+
+NUCLEOTIDE_SUBSTITUTION_MATRICES = [
+    "MEGABLAST", "BLASTN", "NUC.4.4", "HOXD70"
+]
+
+
+def aligner_ui(protein, key_prefix="aligner"):
     """
     Function to allow user to specify a biopython Pairwise Aligner Object
     """
-    st.subheader("Pairwise Aligner Settings")
-
-    
     with st.container():
         # Alignment mode and matrix 
         col1, col2 = st.columns(2)
         with col1:
             mode = st.selectbox("Alignment mode", ["global", "local"], key=f"{key_prefix}_mode")
         with col2:
-            matrix_name = st.selectbox("Substitution matrix", ["BLOSUM62", "BLOSUM80", "PAM30", "PAM250"], key=f"{key_prefix}_matrix")
+            if protein:
+                matrix_name = st.selectbox("Substitution matrix", PROTEIN_SUBSTITUTION_MATRICES , key=f"{key_prefix}_matrix")
+            else:
+                matrix_name = st.selectbox("Substitution matrix", NUCLEOTIDE_SUBSTITUTION_MATRICES , key=f"{key_prefix}_matrix")
 
         # Gap scores in one row
         col3, col4 = st.columns(2)
@@ -305,6 +316,9 @@ def aligner_ui(key_prefix="aligner"):
 
     return aligner
 
+
+
+
     
 
 def show_alignments(ensemble_mapper, key="alignment_select"):
@@ -325,10 +339,10 @@ def show_alignments(ensemble_mapper, key="alignment_select"):
         
         st.subheader(f"Alignment for structure: {structure_name}, chain: {selected_chain}")
         
-        show_chain_alignment(chain_mapper, ref_start=chain_mapper.ref_start, tgt_start=chain_mapper.tgt_start)
+        show_chain_alignment(chain_mapper)
 
 
-def show_chain_alignment(chain_mapper, ref_start=1, tgt_start=1):
+def show_chain_alignment(chain_mapper):
     """
     Creates html for an alignment viewer, with highlighted colors indicating mismatches(red), gaps(grey), and matches(green)
     additionally, by hovering over a residue in the sequence the residue number will be shown

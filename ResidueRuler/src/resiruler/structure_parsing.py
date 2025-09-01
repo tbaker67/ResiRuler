@@ -2,6 +2,56 @@ from Bio.PDB import MMCIFParser
 from Bio.SeqUtils import seq1
 import numpy as np
 
+#This dictionary only works for cif files that are properly labeled
+#ie DNA residue names will always begin with D
+RESIDUE_TYPE = {
+    #Standard amino acids
+    "ALA": "protein", "ARG": "protein", "ASN": "protein", "ASP": "protein",
+    "CYS": "protein", "GLN": "protein", "GLU": "protein", "GLY": "protein",
+    "HIS": "protein", "ILE": "protein", "LEU": "protein", "LYS": "protein",
+    "MET": "protein", "PHE": "protein", "PRO": "protein", "SER": "protein",
+    "THR": "protein", "TRP": "protein", "TYR": "protein", "VAL": "protein",
+    #Non-standard amino acids
+    "MSE": "protein",  
+    "SEC": "protein",  
+    "PYL": "protein",  
+   
+    "DA": "dna", "DC": "dna", "DG": "dna", "DT": "dna",
+    
+    
+    "A": "rna", "C": "rna", "G": "rna", "U": "rna",
+    
+    #Common RNA modifications
+    "I": "rna",     
+    "PSU": "rna",   
+    "PSE": "rna",  
+    "OMC": "rna",  
+    "OMU": "rna",   
+    "M2G": "rna",  
+    "1MA": "rna",   
+    "2MG": "rna",  
+    "5MC": "rna",   
+    "5MU": "rna",  
+}
+
+RESIDUE_TO_ONE_LETTER = {
+    # --- Protein ---
+    "ALA":"A","ARG":"R","ASN":"N","ASP":"D","CYS":"C",
+    "GLN":"Q","GLU":"E","GLY":"G","HIS":"H","ILE":"I",
+    "LEU":"L","LYS":"K","MET":"M","PHE":"F","PRO":"P",
+    "SER":"S","THR":"T","TRP":"W","TYR":"Y","VAL":"V",
+    # Common protein mods
+    "MSE":"M","SEC":"C","PYL":"K",
+
+    # --- DNA ---
+    "DA":"A","DC":"C","DG":"G","DT":"T",
+    # --- RNA ---
+    "A":"A","C":"C","G":"G","U":"U","I":"I",
+    # RNA modifications
+    "PSU":"U","PSE":"U","OMC":"C","OMU":"U","1MA":"A",
+    "5MC":"C","5MU":"U","M2G":"G","7MG":"G","H2U":"U","OMG":"G",
+}
+
 def load_structure(file_path):
     """
     Load the structure from CIF file
@@ -28,8 +78,7 @@ def extract_res_from_chain(chain):
 
 def extract_seq_from_chain(chain):
     """
-    Extracts sequence and residue list from a Biopython chain,
-    including support for insertion codes and unknown residues.
+    Extracts sequence from a Biopython chain,
     """
     seq = ""
 
@@ -37,7 +86,7 @@ def extract_seq_from_chain(chain):
         if res.id[0] != ' ':  # skip heteroatoms
             continue
         try:
-            seq += seq1(res.get_resname())
+            seq += RESIDUE_TO_ONE_LETTER[res.get_resname()]
         except KeyError:
             seq += "X"
     
@@ -152,19 +201,62 @@ def get_SC_from_residue(res):
     ##TODO: Think about how we want to handle this
     elif res.get_resname() == "GLY" and "CA" in res:
         return res["CA"].get_coord()
-    
-
     return None
+
+def get_C1prime_from_residue(res):
+    """
+    Use to get the C1' coordinate for a given residue
+    Assumes input is a valid biopython residue object
+    """
+
+    if "C1'" in res:
+        return res["C1'"].get_coord()
+    print(f"[WARNING] no C1' found for {res.get_parent().id}-{res.id[1]}")
+    return None 
+
+class ChainInfo:
+    def __init__(self, chain):
+        self.chain = chain
+        self.seq = extract_seq_from_chain(chain)
+        self.res_list = extract_res_from_chain(chain)
+        self.type = self.detect_chain_type(self.res_list)
+    
+    def detect_chain_type(self, res_list):
+        res_types = set()
+        for res in res_list:
+            res_type = RESIDUE_TYPE.get(res.resname, None)
+
+            if res_type is None:
+                print(f"[WARNING] Unknown residue '{res.resname}' in chain {self.chain.id}")
+                continue
+            res_types.add(res_type)
         
+        if not res_types:
+            print(f"[Warning] chain {self.chain.id} contains no known residues")
+            return "unknown"
 
+        elif len(res_types) > 1:
+            print(f"[Warning] chain {self.chain.id} contains a mix of RNA/DNA/PROTEIN residues")
+            return "unknown"
 
+        else:
+            return next(iter(res_types))
 
+            
+class ChainCollection:
+    def __init__(self, structure):
+        self.chains = {}
+        for chain in structure.get_chains():
+            self.chains[chain.id] = ChainInfo(chain)
 
-   
-
-
-
+    def valid_pairs(self, other_collection):
+        """
+        Creates a generate to iterate through valid pairings (matching chain types) one-by-one
+        Intended for use with auto-aligning when a structure has a mix of DNA, RNA, and Protein chains
+        """
+        for ref_id, ref_info in self.chains.items():
+            for tgt_id, tgt_info in other_collection.chains.items():
+                if ref_info.type != tgt_info.type:
+                    continue
+                yield ref_id, tgt_id, ref_info, tgt_info
         
-
-
-

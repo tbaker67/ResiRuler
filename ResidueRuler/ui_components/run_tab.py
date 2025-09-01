@@ -33,9 +33,9 @@ def show_run_tab():
 
     selected_chains = chain_selector_ui(structure)
     
-    lower_threshold = get_threshold("Minimum Distance Threshold", "10.0")
+    lower_threshold = get_threshold("Minimum Distance Threshold", "10.0", "run lower")
 
-    upper_threshold = get_threshold("Maximum Distance Threshold", "100.0")
+    upper_threshold = get_threshold("Maximum Distance Threshold", "100.0", "run upper")
     
     if st.button("Run"):
             res_list = extract_residues_from_structure(structure, selected_chains)

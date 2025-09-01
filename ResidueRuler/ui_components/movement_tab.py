@@ -29,15 +29,20 @@ def show_movement_tab():
         chain_mappings = get_chain_mappings_for_targets(tgt_structures,ref_chains, key="movement_mappings")
 
 
-    #get threshold and do alignments
-    pct_id_threshold = get_threshold("Set a minimum pct Identity Threshold for matching chains together", "95.0")
     
     st.session_state.setdefault("mapper", None)
 
-    aligner = aligner_ui("movement aligner")
 
-    if st.button("Map Chains"):
-        st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, aligner)
+    st.subheader("Protein Pairwise Aligner Settings")
+    protein_aligner = aligner_ui(protein=True, key_prefix="protein movement aligner")
+
+    st.subheader("Nucleotide Pairwise Aligner Settings")
+    nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide movement aligner")
+
+    pct_id_threshold = get_threshold("Set a minimum Pct Identity Threshold for matching chains together", "95.0", "movement")
+
+    if st.button("Map Chains", key = "map movement chains"):
+        st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, protein_aligner, nucleotide_aligner)
         
 
         
@@ -49,7 +54,7 @@ def show_movement_tab():
     
     if st.button("Analyze Movement"):
 
-        st.session_state.mapper.set_selected_global_coords(mode=mode)
+        st.session_state.mapper.set_selected_global_coords(protein_mode=mode)
 
         st.session_state.movement_dfs = st.session_state.mapper.calc_movement_dfs()
 
