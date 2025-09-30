@@ -251,12 +251,12 @@ class ChainCollection:
 
     def valid_pairs(self, other_collection):
         """
-        Creates a generate to iterate through valid pairings (matching chain types) one-by-one
+        Creates a generator to iterate through valid pairings (matching chain types) one-by-one
         Intended for use with auto-aligning when a structure has a mix of DNA, RNA, and Protein chains
         """
         for ref_id, ref_info in self.chains.items():
             for tgt_id, tgt_info in other_collection.chains.items():
-                if ref_info.type != tgt_info.type:
+                if ref_info.type != tgt_info.type or ref_info.type == 'unknown' or tgt_info.type=='unknown':
                     continue
                 yield ref_id, tgt_id, ref_info, tgt_info
         
