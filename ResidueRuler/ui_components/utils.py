@@ -442,10 +442,14 @@ def show_chain_alignment(chain_mapper):
     st.components.v1.html(html_content, height=50, scrolling=True)
 
 def get_measurement_mode(key="measurement_mode"):
-    option_to_mode = {"C-α":"CA", "C-β":"CB", "Side-Chain Centroid (Heavy Atoms Excluding CA)":"SC"}
-    selected_mode = st.selectbox(
-        "Choose Where to Measure Distances From",
-        options=["C-α", "C-β", "Side-Chain Centroid (Heavy Atoms Excluding CA)"],
-        key=key
-    )
-    return option_to_mode[selected_mode]
+    st.markdown("Choose Where to Measure Distances From")
+    protein_option_to_mode = {"C-α":"CA", "C-β":"CB", "Side-Chain Centroid (Heavy Atoms Excluding CA)":"SC"}
+    nucleic_option_to_mode = {"C1'":"C1'", "Centroid ()":"NC"}
+
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_protein_mode = st.selectbox("Choose Which Atoms To Measure Proteins From", protein_option_to_mode.keys(), key=f"{key}_protein")
+    with col2:
+        selected_nucleic_mode = st.selectbox("Choose Which Atoms To Measure Nucleic Acids From", nucleic_option_to_mode.keys(), key=f"{key}_nucleic")
+
+    return protein_option_to_mode[selected_protein_mode], nucleic_option_to_mode[selected_nucleic_mode]

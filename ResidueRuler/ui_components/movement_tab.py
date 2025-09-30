@@ -8,7 +8,6 @@ from src.resiruler.plotting import plot_colorbar
 from src.resiruler.chimera_export import generate_arrow_dicts, generate_multiple_movement_scripts, generate_pml_arrows
 import os
 from pathlib import Path
-from Bio.Align import PairwiseAligner, substitution_matrices
 import json
 
 def show_movement_tab():
@@ -39,7 +38,7 @@ def show_movement_tab():
     st.subheader("Nucleotide Pairwise Aligner Settings")
     nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide movement aligner")
 
-    pct_id_threshold = get_threshold("Set a minimum Pct Identity Threshold for matching chains together", "95.0", "movement")
+    pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0", "movement_pct_id")
 
     if st.button("Map Chains", key = "map movement chains"):
         st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, protein_aligner, nucleotide_aligner)
@@ -50,11 +49,11 @@ def show_movement_tab():
     if st.session_state.mapper is not None:
         show_alignments(st.session_state.mapper, key="movement_alignment")
 
-    mode = get_measurement_mode(key="movement_measurement_mode")
+    protein_mode, nucleic_mode = get_measurement_mode(key="movement_measurement_mode")
     
     if st.button("Analyze Movement"):
 
-        st.session_state.mapper.set_selected_global_coords(protein_mode=mode)
+        st.session_state.mapper.set_selected_global_coords(protein_mode=protein_mode, nucleic_mode=nucleic_mode)
 
         st.session_state.movement_dfs = st.session_state.mapper.calc_movement_dfs()
 
@@ -76,7 +75,7 @@ def show_movement_tab():
         # Show gradient color picker and preview
 
         palette = gradient_palette_picker(default_colors=default_colors, key="movement_palette_picker")
-        min_val,max_val = get_coloring_values(vmin, vmax)
+        min_val,max_val = get_coloring_values(vmin, vmax, key="movement")
 
         show_gradient_bar(palette, min_val=min_val, max_val=max_val)
         cmap_obj = build_gradient_cmap(palette, max_val, min_val)
@@ -90,12 +89,7 @@ def show_movement_tab():
         "Select structure for visualization",
         options=list(structure_choices.keys())
         )
-        
-        
-        if "vector_view" in st.session_state:
-            del st.session_state.vector_view
-
-        
+       
         viewer1 = start_pymol_viewer(ref_cif)
         st.session_state.vector_view = plot_vectors_plotly(st.session_state.movement_dfs[selected_structure], cmap_obj,min_val,max_val)
         st.subheader("Movement Vectors Preview Visualization")
@@ -120,9 +114,8 @@ def show_movement_tab():
             ref_cif_data = open(ref_cif_path).read()
             tgt_cif_data = open(tgt_cif_path).read()
             builder.molstar_streamlit(
-                data={"local.cif": ref_cif_data, "annotations.json": annotations_json},
-                width=1600,
-                height=600,
+                data={"local.cif": ref_cif_data, "annotations.json": annotations_json}
+    
             )
 
             annotations2 = write_movement_annotations(

@@ -33,18 +33,20 @@ def show_compare_tab():
     st.subheader("Nucleotide Pairwise Aligner Settings")
     nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide compare aligner")
 
-    pct_id_threshold = get_threshold("Set a minimum Pct Identity Threshold for matching chains together", "95.0","compare")
+    pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0","compare_pct_id")
 
     if st.button("Map Chains", key = "map compare chains"):
         st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, protein_aligner, nucleotide_aligner)
-        
+    
+    if st.session_state.mapper is not None:
+        show_alignments(st.session_state.mapper, key="movement_alignment")
     ##TODO: Allow for filtering to only matched chains across all
     selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")
 
-    mode = get_measurement_mode(key="compare_measurement_mode")
+    protein_mode, nucleic_mode = get_measurement_mode(key="compare_measurement_mode")
 
     if st.button("Compare") and st.session_state.mapper:
-        st.session_state.mapper.set_selected_global_coords(selected_chains, mode=mode)
+        st.session_state.mapper.set_selected_global_coords(selected_chains, protein_mode=protein_mode, nucleic_mode=nucleic_mode)
         ref_dm, tgt_dms_dict, compare_dms_dict = st.session_state.mapper.calc_matrices()
         
         ref_fig, tgt_figs_dict, compare_figs_dict = plot_all_matrices_ensemble(

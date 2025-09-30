@@ -4,16 +4,16 @@ import matplotlib.colors as mcolors
 from matplotlib.colors import LinearSegmentedColormap
 
 
-def get_coloring_values(min=0, max=100):
+def get_coloring_values(min=0.0, max=100.0, key=""):
     """
     UI widget for choosing min/max value.
     """
 
     col1, col2 = st.columns(2)
     with col1:
-        min_val = st.number_input("Min value", value=min)
+        min_val = st.number_input("Min value", value=min, key=key + 'min')
     with col2:
-        max_val = st.number_input("Max value", value=max)
+        max_val = st.number_input("Max value", value=max, key=key + 'max')
 
     if min_val >= max_val:
         st.error("Min value must be less than max value")
