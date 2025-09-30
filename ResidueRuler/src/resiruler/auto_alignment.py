@@ -273,7 +273,7 @@ class StructureMapper:
             potential_map = ChainMapper(ref_info.chain, ref_info.seq,aligned_ref_seq, tgt_info.chain, tgt_info.seq,aligned_tgt_seq, alignment, ref_info.type)
 
             percent_identity = potential_map.calc_percent_identity()
-            #print(f"Testing chains {ref_chain.id} vs {tgt_chain.id} — %ID: {percent_identity:.2f}")
+            
                 
 
             if percent_identity < threshold:
@@ -291,10 +291,10 @@ class StructureMapper:
                 aligned_tgt_coords
             )
 
-            
+
             #no division by zero unless pct id threshold <= 0
 
-            score = alignment.score / len(aligned_ref_coords) - 1e-6 * (rmsd) # prioritize alignment score, break ties with RMSD
+            score = (alignment.score / len(aligned_ref_seq.replace("-", ""))) - 0.1 * rmsd # prioritize alignment score, break ties with RMSD
             valid_pairs.append((ref_id, tgt_id))
             scores[(ref_id, tgt_id)] = score
             mappings[(ref_id, tgt_id)] = potential_map
@@ -385,35 +385,48 @@ class StructureMapper:
             "dna":nucleic_mode,
             "rna":nucleic_mode
         }
-        coords_ref_list = []
-        coords_tgt_list = []
-        index_map = {} 
-        res_id_map = {}
 
-        coords_index = 0
+        # current # of residues that have been mapped so far
+        total_residues = 0
+        chain_info = []
+
         for chain_id, cm in self.chain_mappings.items():
             if selected_chains and chain_id not in selected_chains:
                 print(f"[INFO] Skipping chain {chain_id} (not in selected_chains)")
                 continue
             
+            #get residue lists for an individual chain pairing in the structure
             aligned_ref_coords, aligned_tgt_coords, chain_index_map = cm.get_aligned_coord_lists(type_to_mode[cm.type])
+
+            n_residues = len(aligned_ref_coords)
+            if n_residues == 0:
+                continue
             
-            coords_ref_list.append(np.array(aligned_ref_coords))
-            coords_tgt_list.append(np.array(aligned_tgt_coords))
+            chain_info.append((cm, aligned_ref_coords, aligned_tgt_coords, chain_index_map, total_residues))
+            total_residues += n_residues
 
-            for ref_key, chain_index in chain_index_map.items():
-                index_map[ref_key] = coords_index + chain_index
+        if total_residues == 0:
+            raise ValueError("No aligned coordinates found for selected chains.")
 
-            coords_index += len(chain_index_map)
-            res_id_map.update(cm.res_id_mapping)
+        # pre-allocate arrays to store whole structure mapping
+        coords_ref = np.zeros((total_residues, 3), dtype=float)
+        coords_tgt = np.zeros((total_residues, 3), dtype=float)
+        index_map_global = {}
+        res_id_map_global = {}
 
-        if len(coords_ref_list) == 0:
-            raise ValueError("No aligned coordinates were found. Check selected chains and mapping.")
+        for cm, ref_coords, tgt_coords, index_map, offset in chain_info:
+            n_res = len(ref_coords)
+            coords_ref[offset:offset+n_res] = ref_coords
+            coords_tgt[offset:offset+n_res] = tgt_coords
 
-        coords_ref = np.vstack(coords_ref_list)
-        coords_tgt = np.vstack(coords_tgt_list)
-        
-        return coords_ref, coords_tgt, index_map, res_id_map
+            
+            for ref_key, local_idx in index_map.items():
+                index_map_global[ref_key] = offset + local_idx
+
+            
+            res_id_map_global.update(cm.res_id_mapping)
+
+        return coords_ref, coords_tgt, index_map_global, res_id_map_global
 
 
 class EnsembleMapper:
@@ -440,7 +453,7 @@ class EnsembleMapper:
         else:
             structure_mapping.map_chains(threshold)
         self.structure_mappings[tgt_structure_name] = structure_mapping
-    
+
     def get_common_ref_residues(self, selected_chains):
         """
         Gets only the residues that are matched in all mapped structures
@@ -476,61 +489,82 @@ class EnsembleMapper:
 
         
         return common_ref_residues
-
-
-    def set_selected_global_coords(self, selected_chains=None, protein_mode="CA", nucleic_mode = "C1'"):
+    
+    def set_selected_global_coords(self, selected_chains=None, protein_mode="CA", nucleic_mode="C1'"):
+        """
+        Precompute global coordinates for reference and targets, ensuring consistent ordering,
+        and handling missing coordinates safely (no NaNs).
+        """
         if not self.structure_mappings:
             raise ValueError("No target structures added yet.")
-            
+
         if selected_chains is None:
             selected_chains = [chain.id for chain in self.ref_structure.get_chains()]
-        
-        #now we have a set of residues that got matched in all structure mappings
+
+        #get residues mapped in all structures
         common_ref_residues = self.get_common_ref_residues(selected_chains)
+        if not common_ref_residues:
+            raise ValueError("No residues mapped in all structures.")
 
-        
-       
+        coords_ref_per_structure = {}
+        coords_tgt_per_structure = {}
+        index_maps_per_structure = {}
+        res_id_maps_per_structure = {}
 
-        sorted_residues = sorted(common_ref_residues) # consistent order (Alphabetical by chain first, then residue number, then insertion code)
+        for name, structure_mapping in self.structure_mappings.items():
+            coords_ref, coords_tgt, index_map, res_id_map = structure_mapping.get_selected_mapping(
+                selected_chains, protein_mode, nucleic_mode
+            )
 
+            # only keep residues that actually have coordinates
+            valid_residues = set(index_map.keys()) & common_ref_residues
+            if not valid_residues:
+                continue
 
-        first_mapping = next(iter(self.structure_mappings.values()))
-        coords_ref_list = []
-        global_index_mapping = {}
-        
-        coords_ref,_ ,index_map , _ = first_mapping.get_selected_mapping(selected_chains, protein_mode, nucleic_mode)
-        
-        #Get the reference coordinates
-        for idx, res_id in enumerate(sorted_residues):
+            # filter coordinate arrays to include only valid residues
+            coords_ref_filtered = np.array([coords_ref[index_map[r]] for r in valid_residues])
+            coords_tgt_filtered = np.array([coords_tgt[index_map[r]] for r in valid_residues])
 
-            coords_ref_list.append(coords_ref[index_map[res_id]])
-            global_index_mapping[res_id] = idx
+            coords_ref_per_structure[name] = coords_ref_filtered
+            coords_tgt_per_structure[name] = coords_tgt_filtered
 
-        self.coords_ref = np.array(coords_ref_list)
-        self.global_index_mapping = global_index_mapping
+            # map only valid residues
+            index_maps_per_structure[name] = {r: i for i, r in enumerate(valid_residues)}
+            res_id_maps_per_structure[name] = {r: res_id_map[r] for r in valid_residues}
 
+        if not coords_ref_per_structure:
+            raise ValueError("No valid residues with coordinates in any structure.")
 
+        # determine the set of residues present in all structures
+        all_valid_residue_sets = [set(idx_map.keys()) for idx_map in index_maps_per_structure.values()]
+        global_residues = set.intersection(*all_valid_residue_sets)
+        if not global_residues:
+            raise ValueError("No residues with coordinates in all structures.")
+
+        sorted_residues = sorted(global_residues)
+
+        # get reference structure info since it will be reused
+        first_name = next(iter(coords_ref_per_structure.keys()))
+        first_index_map = index_maps_per_structure[first_name]
+        first_coords_ref = coords_ref_per_structure[first_name]
+
+        self.coords_ref = np.array([first_coords_ref[first_index_map[r]] for r in sorted_residues])
+        self.global_index_mapping = {res_id: idx for idx, res_id in enumerate(sorted_residues)}
+
+        #build target coordinates per structure
         self.coords_targets_dict.clear()
         self.res_id_mappings.clear()
-        #Map the target coordinates for each mapper
-        for name, structure_mapping in self.structure_mappings.items():
 
-            _,coords_tgt,index_map,res_id_map = structure_mapping.get_selected_mapping(selected_chains, protein_mode, nucleic_mode)
+        for name in self.structure_mappings.keys():
+            index_map_tgt = index_maps_per_structure[name]
+            coords_tgt_all = coords_tgt_per_structure[name]
+            res_id_map = res_id_maps_per_structure[name]
 
-            #filter res_id map to only include the relevant residues, now we can assume anything in this is actually mapped in across all structures
-            #Only necessary if we iterate through this mapping, otherwise we can get away with not filtering 
-            filtered_res_id_map = {chain_res_ref: chain_res_tgt for chain_res_ref, chain_res_tgt in res_id_map.items() if chain_res_ref in common_ref_residues}
-            
-            remapped_coords_tgt = []
+            # put into global index scheme
+            self.coords_targets_dict[name] = np.array([coords_tgt_all[index_map_tgt[r]] for r in sorted_residues])
+            self.res_id_mappings[name] = {r: res_id_map[r] for r in sorted_residues}
 
-            for ref_id in sorted_residues:
-                remapped_coords_tgt.append(coords_tgt[index_map[ref_id]])
-
-            self.coords_targets_dict[name] = np.array(remapped_coords_tgt)
-            self.res_id_mappings[name] = filtered_res_id_map
-            if filtered_res_id_map is None:
-                print(f"RESID MAP IS NONE FOR {name}")
-            
+                                
 
     def calc_matrices(self):
         """
