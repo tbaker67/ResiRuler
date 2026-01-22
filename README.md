@@ -24,7 +24,7 @@ Once conda is up and running here is how you can install resiruler as well as th
 ```bash
 git clone https://github.com/tbaker67/ResiRuler.git
 cd ResiRuler
-conda create env create -f environemt.yml
+conda env create -f environemt.yml
 conda activate resiruler
 ```
 
