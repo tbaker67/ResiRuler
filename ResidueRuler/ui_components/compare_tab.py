@@ -26,12 +26,14 @@ def show_compare_tab():
     
     
     st.session_state.setdefault("mapper", None)
-
-    st.subheader("Protein Pairwise Aligner Settings")
-    protein_aligner = aligner_ui(protein=True, key_prefix="protein compare aligner")
-
-    st.subheader("Nucleotide Pairwise Aligner Settings")
-    nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide compare aligner")
+    with st.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Protein Pairwise Aligner Settings")
+            protein_aligner = aligner_ui(protein=True, key_prefix="protein compare aligner")
+        with col2:
+            st.subheader("Nucleotide Pairwise Aligner Settings")
+            nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide compare aligner")
 
     pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0","compare_pct_id")
 
@@ -39,7 +41,7 @@ def show_compare_tab():
         st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, protein_aligner, nucleotide_aligner)
     
     if st.session_state.mapper is not None:
-        show_alignments(st.session_state.mapper, key="movement_alignment")
+        show_alignments(st.session_state.mapper, key="compare_alignment")
     ##TODO: Allow for filtering to only matched chains across all
     selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")
 
@@ -84,21 +86,3 @@ def show_compare_tab():
             compare_df.drop(columns=['Coord1_ref', 'Coord2_ref', 'Coord1_tgt', 'Coord2_tgt']),
             use_container_width=True
         )
-
-            
-
-
-    #if "compare_merged" in st.session_state:
-       # st.subheader("Distance Differences")
-       # st.plotly_chart(st.session_state.compare_fig)
-       # st.dataframe(st.session_state.compare_merged)
-
-        
-      #  st.subheader("Download Options")
-       # csv_name = st.text_input("CSV Output Filename", value="distance_difference.csv")
-
-       
-       # st.download_button("Download CSV",
-       #                    data=st.session_state.compare_merged.to_csv(index=False),
-       #                    file_name=csv_name,
-       #                    mime="text/csv")

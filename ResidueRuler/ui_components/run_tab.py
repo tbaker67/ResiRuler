@@ -14,7 +14,6 @@ from ui_components.color_mapping_utils import (
     show_gradient_bar,
     show_discrete_bar,
     build_gradient_cmap,
-    sort_discrete_mapping,
     gradient_palette_picker
 )
 import pandas as pd
