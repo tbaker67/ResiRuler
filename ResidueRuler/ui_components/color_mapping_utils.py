@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import matplotlib.colors as mcolors
 from matplotlib.colors import LinearSegmentedColormap
+import numpy as np
 
 
 def get_coloring_values(min=0.0, max=100.0, key=""):
@@ -49,35 +50,74 @@ def discrete_palette_picker(label="Discrete Color Thresholds", default_threshold
 
     return thresholds_colors
 
-def gradient_palette_picker(label="Gradient Palette", default_colors=None, key="palette_picker"):
+def gradient_palette_picker(vmin, vmax, label="Gradient Palette", default_colors=None, key="palette_picker"):
     st.subheader(label)
 
-    num_stops = st.number_input("Number of gradient stops", min_value=2, max_value=10,
-                                value=len(default_colors) if default_colors else 3, step=1)
+    num_stops = st.number_input(
+        "Number of gradient stops",
+        min_value=2,
+        max_value=10,
+        value=len(default_colors) if default_colors else 3,
+        step=1,
+        key=f"{key}_num_stops"
+    )
 
-    colors = []
+    if default_colors:
+        colors = [default_colors[i % len(default_colors)] for i in range(num_stops)]
+    else:
+        colors = ["#000000"] * num_stops
+
+    picked_colors = []
+    default_positions = np.linspace(vmin, vmax, num_stops)
+    positions = []
     for i in range(num_stops):
-        default = default_colors[i % len(default_colors)] if default_colors else "#000000"
-        color = st.color_picker(f"Color stop {i + 1}", value=default)
-        colors.append(color)
+        col1, col2 = st.columns([2,1])
+        with col1:
+            color = st.color_picker(f"Color stop {i + 1}", value=colors[i], key=f"{key}_color_{i}")
 
+        with col2:
 
-    palette = [hex_color for hex_color in colors]
+            pos = st.number_input(
+                f"Position of stop {i + 1} (0-1)",
+                value=float(default_positions[i]),
+                step=0.01,
+                key=f"{key}_pos_{i}"
+            )
+        picked_colors.append(color)
+        positions.append(pos)
 
-    return palette
+    # Sort colors by positions so gradient makes sense
+    sorted_pairs = sorted(zip(positions, picked_colors), key=lambda x: x[0])
+    positions, picked_colors = zip(*sorted_pairs)
 
-def show_gradient_bar(palette, min_val, max_val):
+    return list(picked_colors), list(positions)
+
+def show_gradient_bar(palette, positions, min_val=None, max_val=None):
     """
-    Render gradient color bar as HTML
+    Render a gradient color bar using actual numeric positions.
+
+    Args:
+        palette: list of hex color strings
+        positions: list of numeric values corresponding to each color
+        min_val: optional minimum value for labels (default: min of positions)
+        max_val: optional maximum value for labels (default: max of positions)
     """
-    gradient_colors = ", ".join([hex for hex in palette])
-    gradient_css = f"linear-gradient(to right, {gradient_colors})"
+    if min_val is None:
+        min_val = min(positions)
+    if max_val is None:
+        max_val = max(positions)
+
+    # Convert positions to percentages for CSS
+    percents = [(p - min_val) / (max_val - min_val) * 100 for p in positions]
+
+    gradient_parts = [f"{color} {percent:.1f}%" for color, percent in zip(palette, percents)]
+    gradient_css = ", ".join(gradient_parts)
 
     gradient_html = f"""
         <div style="
             width: 100%;
             height: 30px;
-            background: {gradient_css};
+            background: linear-gradient(to right, {gradient_css});
             border: 1px solid #ddd;
             border-radius: 4px;
             margin-bottom: 8px;
@@ -156,19 +196,21 @@ def show_discrete_bar(discrete_mapping, min_val, max_val):
     components.html(bar_html, height=50)
 
 
-def build_gradient_cmap(palette, vmin, vmax):
+def build_gradient_cmap(palette, positions, vmin, vmax):
     """
     Builds a matplot color map based on the provided palette which will evenly space out each color across the range [vmin, vmax] after normalized to [0,1]
     """
-    positions = [vmin + i * (vmax - vmin) / (len(palette) - 1) for i in range(len(palette))]
-    positions = [(pos - vmin)/(vmax - vmin) for pos in positions]  # matplot requires normalized range to [0,1]
+    normalized_positions = [(p - vmin) / (vmax - vmin) for p in positions]
 
-    
-    pos_rgb = list(zip(positions, palette))
+    # Clip values to [0,1] just in case
+    normalized_positions = [max(0.0, min(1.0, p)) for p in normalized_positions]
 
-    cmap = LinearSegmentedColormap.from_list("custom_cmap", pos_rgb)
+    rgb_pos = list(zip(normalized_positions, palette))
+
+    print(rgb_pos)
+    # Build colormap
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", rgb_pos)
     return cmap
-
 
 def sort_discrete_mapping(mapping):
     return sorted(mapping, key=lambda x: x[0])

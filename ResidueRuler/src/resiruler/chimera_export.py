@@ -68,29 +68,14 @@ def generate_chimera_link_script(df, chains = None, color_mode="discrete", **kwa
 
     return output.getvalue()
 
-def generate_chimera_coloring_palette_string(palette, vmin, vmax):
+def generate_chimera_coloring_palette_string(palette, positions):
 
-    palette_string = f"{vmin:.2f},{palette[0]}"
-
-    #Evenly space the palette colors with vmin and vmax at the extremes
-    #This also ensures colors match across real-valued and normalized distances as long as they are normalized along (vmin, vmax)
-    for i in range(1,len(palette)):
-        val = vmin + i * (vmax - vmin) / (len(palette) - 1)
-        palette_string += f":{val:.2f},{palette[i]}"
+    palette_string = ""
+    for color, position in zip(palette, positions):
+        palette_string += f"{position:.2f},{color}:"
     
-    return palette_string
+    return palette_string[:-1]
 
-def generate_chimera_key_palette_string(palette, vmin, vmax):
-
-    palette_string = f"{palette[0]}:{vmin:.2f} "
-
-    #Evenly space the palette colors with vmin and vmax at the extremes
-    #This also ensures colors match across real-valued and normalized distances as long as they are normalized along (vmin, vmax)
-    for i in range(1,len(palette)):
-        val = vmin + i * (vmax - vmin) / (len(palette) - 1)
-        palette_string += f" {palette[i]}:{val:.2f} "
-    
-    return palette_string
 
 def generate_pml_palette_string(palette):
     palette_string = ""
@@ -101,7 +86,7 @@ def generate_pml_palette_string(palette):
     return palette_string
 
 
-def generate_multiple_movement_scripts(movement_dfs, ref_name, palette, vmin, vmax):
+def generate_multiple_movement_scripts(movement_dfs, ref_name, palette, positions):
 
     full_def_attr = StringIO()
     full_cxc_script = StringIO()
@@ -120,12 +105,13 @@ def generate_multiple_movement_scripts(movement_dfs, ref_name, palette, vmin, vm
 
         ids += 2
 
-    chimera_coloring_palette_string = generate_chimera_coloring_palette_string(palette, vmin, vmax)
-    chimera_key_palette_string = generate_chimera_key_palette_string(palette, vmin, vmax)
+    chimera_coloring_palette_string = generate_chimera_coloring_palette_string(palette, positions)
     full_cxc_script.write("open full_defattr.defattr \n")
     full_cxc_script.write(f"color #{1}-{ids - 1} grey \n")
     full_cxc_script.write(f"color byattribute r:distance #{1}-{ids - 1} target scab palette {chimera_coloring_palette_string}\n")
-    full_cxc_script.write(f"key {chimera_key_palette_string}\n")
+    chimera_coloring_palette_string = chimera_coloring_palette_string.split(",", 1)[1]
+    chimera_key_string = chimera_coloring_palette_string.replace(",", " ") + ":"
+    full_cxc_script.write(f"key {chimera_key_string }\n")
 
     pml_palette_string = generate_pml_palette_string(palette)
     full_pml_script.write(f'spectrum properties["distance"], {pml_palette_string}')
@@ -168,9 +154,7 @@ def generate_shift_scripts(df, cif1_name, structure_name1, cif2_name, structure_
     cxc = StringIO()
     #write cxc to open up models and the def attr files
     cxc.write(f"open models/{cif1_name} name {name1}-{name2} \n")
-    #cxc.write(f"name {name1} #{first_structure_id} \n")
     cxc.write(f"open models/{cif2_name} name {name2}-{name1} \n")
-    #cxc.write(f"name {name2} #{first_structure_id + 1} \n ")
    
     return defattr.getvalue(), cxc.getvalue(), pml.getvalue()
 
