@@ -32,11 +32,15 @@ def show_movement_tab():
     st.session_state.setdefault("mapper", None)
 
 
-    st.subheader("Protein Pairwise Aligner Settings")
-    protein_aligner = aligner_ui(protein=True, key_prefix="protein movement aligner")
-
-    st.subheader("Nucleotide Pairwise Aligner Settings")
-    nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide movement aligner")
+    with st.container():
+        # Alignment mode and matrix 
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Protein Pairwise Aligner Settings")
+            protein_aligner = aligner_ui(protein=True, key_prefix="protein movement aligner")
+        with col2:
+            st.subheader("Nucleotide Pairwise Aligner Settings")
+            nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide movement aligner")
 
     pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0", "movement_pct_id")
 
@@ -74,11 +78,11 @@ def show_movement_tab():
         default_colors = ["#00008B","#20073a", "#6d1950", "#bd4545", "#d48849", "#f0d171"]
         # Show gradient color picker and preview
 
-        palette = gradient_palette_picker(default_colors=default_colors, key="movement_palette_picker")
-        min_val,max_val = get_coloring_values(vmin, vmax, key="movement")
-
-        show_gradient_bar(palette, min_val=min_val, max_val=max_val)
-        cmap_obj = build_gradient_cmap(palette, max_val, min_val)
+        palette, positions = gradient_palette_picker(0, vmax + 1, default_colors=default_colors, key="movement_palette_picker")
+        min_val = min(positions)
+        max_val = max(positions)
+        show_gradient_bar(palette, positions, min_val=min_val, max_val=max_val)
+        cmap_obj = build_gradient_cmap(palette, positions, min_val, max_val)
 
         structure_choices = {
         f.name[:-4]:f for f in tgt_cifs
@@ -91,7 +95,7 @@ def show_movement_tab():
         )
        
         viewer1 = start_pymol_viewer(ref_cif)
-        st.session_state.vector_view = plot_vectors_plotly(st.session_state.movement_dfs[selected_structure], cmap_obj,min_val,max_val)
+        st.session_state.vector_view = plot_vectors_plotly(st.session_state.movement_dfs[selected_structure], cmap_obj, min_val, max_val)
         st.subheader("Movement Vectors Preview Visualization")
         st.plotly_chart(st.session_state.vector_view, use_container_width=True)
 
@@ -105,7 +109,7 @@ def show_movement_tab():
         ref_cif_path = struct_to_temp_cif(ref_structure)
         tgt_cif_path = struct_to_temp_cif(tgt_structures[selected_structure])
 
-        annotations = write_movement_annotations(st.session_state.movement_dfs[selected_structure], cmap_obj, min_val, max_val )
+        annotations = write_movement_annotations(st.session_state.movement_dfs[selected_structure], cmap_obj, min_val, max_val)
         annotations_json = json.dumps(annotations)
 
         with struct_to_temp_cif(ref_structure) as ref_cif_path, \
@@ -132,12 +136,12 @@ def show_movement_tab():
 
 
         st.session_state.ref_name = os.path.splitext(ref_cif.name)[0]
-        defatt, chimera_cxc, full_pml_script = generate_multiple_movement_scripts(st.session_state.movement_dfs, st.session_state.ref_name, palette, min_val, max_val)
+        defatt, chimera_cxc, full_pml_script = generate_multiple_movement_scripts(st.session_state.movement_dfs, st.session_state.ref_name, palette, positions)
         
         st.session_state.defatt = defatt
         st.session_state.chimera_script = chimera_cxc
         st.session_state.pml_script = full_pml_script
-        st.session_state.bild_scripts, st.session_state.pml_arrows = generate_arrow_dicts(st.session_state.movement_dfs, cmap_obj, vmin, vmax)
+        st.session_state.bild_scripts, st.session_state.pml_arrows = generate_arrow_dicts(st.session_state.movement_dfs, cmap_obj, min_val, max_val)
 
         root_files = {
         f"full_defattr.defattr": st.session_state.defatt,
