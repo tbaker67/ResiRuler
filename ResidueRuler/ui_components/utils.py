@@ -34,27 +34,6 @@ def save_temp_file(uploaded_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[-1]) as tmp_file:
         tmp_file.write(uploaded_file.getbuffer())
         return tmp_file.name
-    
-
-def embed_local_images(markdown_text, base_path):
-    """
-    Finds all ![alt](relative_path) and embeds them as base64-encoded images.
-    """
-    def replacer(match):
-        alt_text, rel_path = match.groups()
-        image_path = (base_path / rel_path).resolve()
-        if image_path.exists():
-            # Guess content type based on extension
-            ext = image_path.suffix.lower().lstrip(".")
-            mime = f"image/{'jpeg' if ext == 'jpg' else ext}"
-            img_bytes = image_path.read_bytes()
-            b64 = base64.b64encode(img_bytes).decode()
-            return f'![{alt_text}](data:{mime};base64,{b64})'
-        else:
-            return f"*Image not found: {rel_path}*"
-
-    # Replace all image links in markdown
-    return re.sub(r'!\[(.*?)\]\((.*?)\)', replacer, markdown_text)
 
 def create_downloadable_zip(files_dict):
     buffer = BytesIO()
@@ -72,9 +51,10 @@ def create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, thresh
     
     return ensemble_mapper
 
-def chain_selector_ui(structure, label="Select Chains to Visualize", default_all=True):
+def chain_selector_ui(structure, label="Select Chains to Visualize (Chains with All will be deselected)", default_all=True, key_prefix="chain_selector"):
     """
-    Display a Streamlit multiselect box for choosing chains from a structure or structure mapper
+    Display a Streamlit multiselect box for choosing chains from a structure or structure mapper.
+    If "All" is selected along with individual chains, returns all chains EXCEPT those individual chains.
     As such, structure should only be a BioPython structure object, or a StructureMapper object from autoalignments.py
     """
     if structure is None:
@@ -84,15 +64,18 @@ def chain_selector_ui(structure, label="Select Chains to Visualize", default_all
     chain_options = None
     if isinstance(structure, StructureMapper):
         chain_options = sorted(structure.matched_ref_chains)
-        #
     else:
         chain_options = sorted({chain.id for model in structure for chain in model})
+    
     multiselect_options = ["All"] + chain_options
-
     default_selection = ["All"] if default_all else []
-    selected = st.multiselect(label, multiselect_options, default=default_selection)
-
-    if "All" in selected:
+    selected = st.multiselect(label, multiselect_options, default=default_selection, key=key_prefix)
+    
+    if "All" in selected and len(selected) > 1:
+        excluded_chains = [c for c in selected if c != "All"]
+        selected_chains = [c for c in chain_options if c not in excluded_chains]
+        return selected_chains if selected_chains else None
+    elif "All" in selected:
         return chain_options
     elif selected:
         return selected
@@ -101,8 +84,7 @@ def chain_selector_ui(structure, label="Select Chains to Visualize", default_all
     
 def load_structure_if_new(cif_file, name_key, struct_key):
     if cif_file is None:
-        return None  # Nothing uploaded
-
+        return None
 
     if (name_key not in st.session_state 
         or st.session_state[name_key] != cif_file.name):
@@ -316,11 +298,6 @@ def aligner_ui(protein, key_prefix="aligner"):
 
     return aligner
 
-
-
-
-    
-
 def show_alignments(ensemble_mapper, key="alignment_select"):
     """
     shows the alignment present in all structure mappers of a selected chiain in the reference
@@ -453,3 +430,11 @@ def get_measurement_mode(key="measurement_mode"):
         selected_nucleic_mode = st.selectbox("Choose Which Atoms To Measure Nucleic Acids From", nucleic_option_to_mode.keys(), key=f"{key}_nucleic")
 
     return protein_option_to_mode[selected_protein_mode], nucleic_option_to_mode[selected_nucleic_mode]
+
+def filter_df_by_chains(df, selected_chains):
+    """Filter dataframe to only include residues from selected chains in the reference structure."""
+    if df.empty or not selected_chains:
+        return df
+    chain1 = df['ChainID_Resnum1'].str.split('-').str[0]
+    mask = chain1.isin(selected_chains)
+    return df[mask].reset_index(drop=True)

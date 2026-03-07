@@ -1,11 +1,9 @@
 import streamlit as st
-from ui_components.pymol_viewers import draw_movement_shift_pymol, start_pymol_viewer, draw_movement_vectors_py3dmol, plot_vectors_plotly
-from ui_components.utils import create_downloadable_zip, create_ensemble_mapper, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_downloadable_zip_grouped, aligner_ui, show_alignments, get_measurement_mode,  struct_to_temp_cif
-from ui_components.color_mapping_utils import gradient_palette_picker, build_gradient_cmap, show_gradient_bar, get_coloring_values
+from ui_components.pymol_viewers import plot_vectors_plotly
+from ui_components.utils import create_ensemble_mapper, load_structure_if_new, get_threshold, load_structures_if_new, chain_selector_ui, get_chain_mappings_for_targets, create_downloadable_zip_grouped, aligner_ui, show_alignments, get_measurement_mode,  struct_to_temp_cif, filter_df_by_chains
+from ui_components.color_mapping_utils import gradient_palette_picker, build_gradient_cmap, show_gradient_bar
 from ui_components.molstar_viewers import create_distance_shift_builder, write_movement_annotations
-from src.resiruler.distance_calc import calc_difference_from_mapper
-from src.resiruler.plotting import plot_colorbar
-from src.resiruler.chimera_export import generate_arrow_dicts, generate_multiple_movement_scripts, generate_pml_arrows
+from src.resiruler.chimera_export import generate_arrow_dicts, generate_multiple_movement_scripts
 import os
 from pathlib import Path
 import json
@@ -18,19 +16,14 @@ def show_movement_tab():
     ref_cif = st.file_uploader("Upload Aligned Reference CIF", type=["cif"], key="movement_reference")
     tgt_cifs = st.file_uploader("Upload Aligned Target CIFs", type=["cif"], key="movement_tgts", accept_multiple_files=True)
 
-    
     ref_structure = load_structure_if_new(ref_cif, "compare_name1", "compare_structure1")
     tgt_structures = load_structures_if_new(tgt_cifs, "compare_name2", "compare_structure2")
-
 
     if ref_structure and tgt_structures:
         ref_chains = [ref_chain.id for ref_chain in ref_structure[0].get_chains()]
         chain_mappings = get_chain_mappings_for_targets(tgt_structures,ref_chains, key="movement_mappings")
 
-
-    
     st.session_state.setdefault("mapper", None)
-
 
     with st.container():
         # Alignment mode and matrix 
@@ -47,37 +40,31 @@ def show_movement_tab():
     if st.button("Map Chains", key = "map movement chains"):
         st.session_state.mapper = create_ensemble_mapper(ref_structure, tgt_structures, chain_mappings, pct_id_threshold, protein_aligner, nucleotide_aligner)
         
-
-        
-        
     if st.session_state.mapper is not None:
         show_alignments(st.session_state.mapper, key="movement_alignment")
 
     protein_mode, nucleic_mode = get_measurement_mode(key="movement_measurement_mode")
     
     if st.button("Analyze Movement"):
-
         st.session_state.mapper.set_selected_global_coords(protein_mode=protein_mode, nucleic_mode=nucleic_mode)
-
         st.session_state.movement_dfs = st.session_state.mapper.calc_movement_dfs()
-
-
-
         st.success("Movement analysis complete!")
 
     
     if st.session_state.movement_dfs is not None:
-
-        
-        mins = [df['Distance'].min() for df in st.session_state.movement_dfs.values()]
+        selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")
+        filtered_movement_dfs = {
+            struct_name: filter_df_by_chains(df, selected_chains)
+            for struct_name, df in st.session_state.movement_dfs.items()
+        }
+        mins = [df['Distance'].min() for df in filtered_movement_dfs.values()]
         vmin = min(mins)
         
-        maxes = [df['Distance'].max() for df in st.session_state.movement_dfs.values()]
+        maxes = [df['Distance'].max() for df in filtered_movement_dfs.values()]
         vmax = max(maxes)
 
         default_colors = ["#00008B","#20073a", "#6d1950", "#bd4545", "#d48849", "#f0d171"]
         # Show gradient color picker and preview
-
         palette, positions = gradient_palette_picker(0, vmax + 1, default_colors=default_colors, key="movement_palette_picker")
         min_val = min(positions)
         max_val = max(positions)
@@ -94,8 +81,7 @@ def show_movement_tab():
         options=list(structure_choices.keys())
         )
        
-        viewer1 = start_pymol_viewer(ref_cif)
-        st.session_state.vector_view = plot_vectors_plotly(st.session_state.movement_dfs[selected_structure], cmap_obj, min_val, max_val)
+        st.session_state.vector_view = plot_vectors_plotly(filtered_movement_dfs[selected_structure], cmap_obj, min_val, max_val)
         st.subheader("Movement Vectors Preview Visualization")
         st.plotly_chart(st.session_state.vector_view, use_container_width=True)
 
@@ -109,7 +95,7 @@ def show_movement_tab():
         ref_cif_path = struct_to_temp_cif(ref_structure)
         tgt_cif_path = struct_to_temp_cif(tgt_structures[selected_structure])
 
-        annotations = write_movement_annotations(st.session_state.movement_dfs[selected_structure], cmap_obj, min_val, max_val)
+        annotations = write_movement_annotations(filtered_movement_dfs[selected_structure], cmap_obj, min_val, max_val)
         annotations_json = json.dumps(annotations)
 
         with struct_to_temp_cif(ref_structure) as ref_cif_path, \
@@ -123,7 +109,7 @@ def show_movement_tab():
             )
 
             annotations2 = write_movement_annotations(
-                st.session_state.movement_dfs[selected_structure], cmap_obj, min_val, max_val, ref=False, 
+                filtered_movement_dfs[selected_structure], cmap_obj, min_val, max_val, ref=False, 
             )
             annotations_json2 = json.dumps(annotations2)
             builder.molstar_streamlit(
@@ -132,16 +118,16 @@ def show_movement_tab():
 
         
         st.subheader("Movement Data")
-        st.dataframe(st.session_state.movement_dfs[selected_structure])
+        st.dataframe(filtered_movement_dfs[selected_structure])
 
 
         st.session_state.ref_name = os.path.splitext(ref_cif.name)[0]
-        defatt, chimera_cxc, full_pml_script = generate_multiple_movement_scripts(st.session_state.movement_dfs, st.session_state.ref_name, palette, positions)
+        defatt, chimera_cxc, full_pml_script = generate_multiple_movement_scripts(filtered_movement_dfs, st.session_state.ref_name, palette, positions)
         
         st.session_state.defatt = defatt
         st.session_state.chimera_script = chimera_cxc
         st.session_state.pml_script = full_pml_script
-        st.session_state.bild_scripts, st.session_state.pml_arrows = generate_arrow_dicts(st.session_state.movement_dfs, cmap_obj, min_val, max_val)
+        st.session_state.bild_scripts, st.session_state.pml_arrows = generate_arrow_dicts(filtered_movement_dfs, cmap_obj, min_val, max_val)
 
         root_files = {
         f"full_defattr.defattr": st.session_state.defatt,
@@ -151,7 +137,7 @@ def show_movement_tab():
 
         # --- CSV files per structure ---
         csv_dict = {}
-        for struct_name, df in st.session_state.movement_dfs.items():
+        for struct_name, df in filtered_movement_dfs.items():
             csv_filename = f"{struct_name}_movement.csv"
             csv_dict[csv_filename] = df.to_csv(index=False)
 
