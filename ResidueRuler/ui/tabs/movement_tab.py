@@ -3,7 +3,7 @@ from ui_components.pymol_viewers import plot_vectors_plotly
 from ui_components.utils import create_ensemble_mapper, load_structure_if_new, get_threshold, load_structures_if_new, chain_selector_ui, get_chain_mappings_for_targets, create_downloadable_zip_grouped, aligner_ui, show_alignments, get_measurement_mode,  struct_to_temp_cif, filter_df_by_chains
 from ui_components.color_mapping_utils import gradient_palette_picker, build_gradient_cmap, show_gradient_bar
 from ui_components.molstar_viewers import create_distance_shift_builder, write_movement_annotations
-from src.resiruler.chimera_export import generate_arrow_dicts, generate_multiple_movement_scripts
+from resiruler.viz.export_visualizations import generate_arrow_dicts, generate_multiple_movement_scripts
 import os
 from pathlib import Path
 import json

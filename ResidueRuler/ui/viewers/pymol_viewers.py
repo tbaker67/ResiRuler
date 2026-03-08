@@ -2,7 +2,7 @@ import py3Dmol
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from src.resiruler.chimera_export import get_color_discrete, get_color_gradient
+from resiruler.viz.export_visualizations import get_color_discrete, get_color_gradient
 import numpy as np
 import plotly.graph_objects as go
 

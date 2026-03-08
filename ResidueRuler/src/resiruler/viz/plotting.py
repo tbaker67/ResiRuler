@@ -4,7 +4,7 @@ import numpy as np
 import ast
 import os
 import plotly.graph_objects as go
-from src.resiruler.distance_calc import CompareDistanceMatrix
+from resiruler.core.distance_calc import CompareDistanceMatrix
 
 
 def parse_coord_column(series):

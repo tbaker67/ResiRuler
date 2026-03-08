@@ -1,4 +1,4 @@
-from .plotting import (
+from ..viz.plotting import (
     plot_distance_difference,
     
 )
@@ -13,7 +13,7 @@ from .distance_calc import (
     calc_difference_from_mapper
 )
 
-from .chimera_export import (
+from ..viz.export_visualizations import (
     get_color_discrete,
     get_color_gradient,
 )

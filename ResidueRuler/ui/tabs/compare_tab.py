@@ -5,7 +5,7 @@ from ui_components.utils import (
     get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments, 
     get_measurement_mode, distance_threshold_ui, get_chain_pair_options, display_chain_pair_selector
 )
-from src.resiruler.plotting import (
+from resiruler.visualization.plotting import (
     plot_distance_difference, plot_interactive_contact_map, plot_all_matrices_ensemble,
     plot_comparison_with_contact_filter, plot_contacts_gained, plot_contacts_lost
 )

@@ -6,8 +6,8 @@ import os
 import py3Dmol
 from Bio.PDB import MMCIFParser, MMCIFIO
 from ui_components.utils import save_temp_file
-from usalign_wrapper import run_usalign_matrix_only
-from src.resiruler.auto_alignment import filter_and_write_aligned_maps
+from resiruler.wrappers.usalign_wrapper import run_usalign_matrix_only
+from resiruler.core.auto_alignment import filter_and_write_aligned_maps
 
 def apply_transform(structure, rotation, translation):
     """

@@ -5,9 +5,9 @@ import streamlit as st
 import io
 from io import BytesIO
 import zipfile
-from src.resiruler.auto_alignment import StructureMapper, EnsembleMapper
-from src.resiruler.structure_parsing import load_structure, extract_res_from_chain
-from src.resiruler.plotting import plot_interactive_contact_map, plot_contacts_gained, plot_contacts_lost, plot_comparison_with_contact_filter
+from resiruler.core.auto_alignment import StructureMapper, EnsembleMapper
+from resiruler.core.structure_parsing import load_structure, extract_res_from_chain
+from resiruler.visualization.plotting import plot_interactive_contact_map, plot_contacts_gained, plot_contacts_lost, plot_comparison_with_contact_filter
 from contextlib import contextmanager
 from Bio.PDB.mmcifio import MMCIFIO
 from Bio.Align import substitution_matrices

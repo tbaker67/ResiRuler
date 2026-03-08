@@ -3,10 +3,10 @@ import pandas as pd
 import matplotlib.colors as mcolors
 from pathlib import Path
 from ui_components.utils import chain_selector_ui, create_downloadable_zip, load_structure_if_new, get_threshold
-from src.resiruler.structure_parsing import extract_residues_from_structure, convert_to_CA_coords_list
-from src.resiruler.distance_calc import DistanceMatrix
-from src.resiruler.plotting import plot_interactive_contact_map
-from src.resiruler.chimera_export import generate_chimera_link_script
+from resiruler.core.structure_parsing import extract_residues_from_structure, convert_to_CA_coords_list
+from resiruler.core.distance_calc import DistanceMatrix
+from resiruler.visualization.plotting import plot_interactive_contact_map
+from resiruler.viz.export_visualizations import generate_chimera_link_script
 from ui_components.pymol_viewers import start_pymol_viewer, draw_links_pymol
 from ui_components.color_mapping_utils import (
     get_coloring_values,
