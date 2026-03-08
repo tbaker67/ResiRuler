@@ -1,14 +1,17 @@
-import sys
+"""Main Streamlit application entry point for ResiRuler UI."""
 import os
-from pathlib import Path
-sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
+
+# Add ResidueRuler directory to path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import streamlit as st
-from ResidueRuler.ui.tabs.align_tab import show_align_tab
-from ResidueRuler.ui.tabs.run_tab import show_run_tab
-from ResidueRuler.ui.tabs.compare_tab import show_compare_tab
-from ResidueRuler.ui.tabs.movement_tab import show_movement_tab
-from ResidueRuler.ui.tabs.readme_tab import show_readme_tab
+
+from ui.tabs.align_tab import show_align_tab
+from ui.tabs.compare_tab import show_compare_tab
+from ui.tabs.movement_tab import show_movement_tab
+from ui.tabs.readme_tab import show_readme_tab
+from ui.tabs.run_tab import show_run_tab
 st.set_page_config(layout="wide")
 st.title("ResiRuler Prototype UI")
 

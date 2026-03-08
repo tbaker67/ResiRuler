@@ -1,5 +1,6 @@
-import pandas as pd
+"""Distance matrix calculation and comparison utilities."""
 import numpy as np
+import pandas as pd
 from scipy.spatial.distance import cdist
 
 class DistanceMatrix:

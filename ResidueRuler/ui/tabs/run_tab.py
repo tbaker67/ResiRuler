@@ -1,23 +1,33 @@
-import streamlit as st
-import pandas as pd
+"""Run tab for single structure analysis and link visualization."""
+from pathlib import Path
+
 import matplotlib.colors as mcolors
-from pathlib import Path
-from ui_components.utils import chain_selector_ui, create_downloadable_zip, load_structure_if_new, get_threshold
-from resiruler.core.structure_parsing import extract_residues_from_structure, convert_to_CA_coords_list
-from resiruler.core.distance_calc import DistanceMatrix
-from resiruler.visualization.plotting import plot_interactive_contact_map
-from resiruler.viz.export_visualizations import generate_chimera_link_script
-from ui_components.pymol_viewers import start_pymol_viewer, draw_links_pymol
-from ui_components.color_mapping_utils import (
-    get_coloring_values,
-    discrete_palette_picker,
-    show_gradient_bar,
-    show_discrete_bar,
-    build_gradient_cmap,
-    gradient_palette_picker
-)
 import pandas as pd
-from pathlib import Path
+import streamlit as st
+
+from src.resiruler.core.distance_calc import DistanceMatrix
+from src.resiruler.core.structure_parsing import (
+    convert_to_CA_coords_list,
+    extract_residues_from_structure,
+)
+from src.resiruler.viz.export_visualizations import generate_chimera_link_script
+from src.resiruler.viz.plotting import plot_interactive_contact_map
+from ui.viewers.pymol_viewers import draw_links_pymol, start_pymol_viewer
+from ui.widgets.color_mapping_utils import (
+    build_gradient_cmap,
+    discrete_palette_picker,
+    get_coloring_values,
+    gradient_palette_picker,
+    show_discrete_bar,
+    show_gradient_bar,
+    sort_discrete_mapping,
+)
+from ui.widgets.utils import (
+    chain_selector_ui,
+    create_downloadable_zip,
+    get_threshold,
+    load_structure_if_new,
+)
 
 def show_run_tab():
     cif_file = st.file_uploader("Upload Structure File (.cif)", type=["cif"])

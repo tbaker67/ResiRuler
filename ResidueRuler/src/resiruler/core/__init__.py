@@ -1,36 +1,15 @@
-from ..viz.plotting import (
-    plot_distance_difference,
-    
-)
-
-from .structure_parsing import (
-    load_structure,
-    get_coords_from_id,
-
-)
-
-from .distance_calc import (
-    calc_difference_from_mapper
-)
-
-from ..viz.export_visualizations import (
-    get_color_discrete,
-    get_color_gradient,
-)
-
-from .auto_alignment import (
-    StructureMapper
-)
+# Core module exports
+from .auto_alignment import StructureMapper, EnsembleMapper
+from .structure_parsing import load_structure, get_coords_from_id, extract_res_from_chain
+from .distance_calc import DistanceMatrix, CompareDistanceMatrix, calc_difference_from_mapper
 
 __all__ = [
-    'plot_distance_difference',
+    'StructureMapper',
+    'EnsembleMapper',
     'load_structure',
     'get_coords_from_id',
+    'extract_res_from_chain',
+    'DistanceMatrix',
+    'CompareDistanceMatrix',
     'calc_difference_from_mapper',
-
-    'get_color_discrete',
-    'get_color_gradient',
-
-    'chimera_movement_vectors_from_csv',
-    'StructureMapper'
 ]

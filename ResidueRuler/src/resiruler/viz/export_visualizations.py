@@ -1,12 +1,11 @@
-import pandas as pd
-import numpy as np
+"""Export utilities for ChimeraX scripts, BILD files, and other visualizations."""
 import ast
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import io
-from pathlib import Path
-from io import StringIO
 from os.path import basename
+
+import matplotlib.colors as mcolors
+import numpy as np
+import pandas as pd
 
 def safe_eval(val):
     """
@@ -88,9 +87,9 @@ def generate_pml_palette_string(palette):
 
 def generate_multiple_movement_scripts(movement_dfs, ref_name, palette, positions):
 
-    full_def_attr = StringIO()
-    full_cxc_script = StringIO()
-    full_pml_script = StringIO()
+    full_def_attr = io.StringIO()
+    full_cxc_script = io.StringIO()
+    full_pml_script = io.StringIO()
 
     ids = 1
     for tgt_structure_name, movement_df in movement_dfs.items():
@@ -130,11 +129,11 @@ def generate_shift_scripts(df, cif1_name, structure_name1, cif2_name, structure_
     name1 = structure_name1
     name2 = structure_name2
 
-    pml = StringIO()
+    pml = io.StringIO()
     pml.write(f"load models/{cif1_name}, {name1}-{name2} \n")
     pml.write(f"load models/{cif2_name}, {name2}-{name1} \n")
 
-    defattr = StringIO()
+    defattr = io.StringIO()
     if first_structure_id == 1:
         defattr.write("attribute: distance\nrecipient: residues\n")
     
@@ -151,7 +150,7 @@ def generate_shift_scripts(df, cif1_name, structure_name1, cif2_name, structure_
         defattr.write(f"\t#{first_structure_id}/{chain1}:{resnum1}\t{dist}\n")
         defattr.write(f"\t#{first_structure_id + 1}/{chain2}:{resnum2}\t{dist}\n")
 
-    cxc = StringIO()
+    cxc = io.StringIO()
     #write cxc to open up models and the def attr files
     cxc.write(f"open models/{cif1_name} name {name1}-{name2} \n")
     cxc.write(f"open models/{cif2_name} name {name2}-{name1} \n")
@@ -189,7 +188,7 @@ def generate_bild_string(df, cmap, norm):
     coords2 = df['Coord2']
     distances = df['Distance'].apply(safe_eval)
 
-    bild = StringIO()
+    bild = io.StringIO()
     bild.write('.translate 0.0 0.0 0.0 \n')
     bild.write('.scale 1 \n')
 
@@ -217,7 +216,7 @@ def generate_pml_arrows(df, cmap, norm, arrow_radius=0.2, arrow_head_ratio=0.2):
     distances = df['Distance'].apply(safe_eval)
     diff_vecs = df['Diff_Vec']
     
-    pml = StringIO()
+    pml = io.StringIO()
     pml.write("from pymol.cgo import *\n")
     pml.write("from pymol import cmd\n\n")
     pml.write("all_arrows = []\n")

@@ -1,13 +1,15 @@
-# align_tab.py
-import streamlit as st
-import numpy as np
+"""Alignment tab for US-align structure alignment."""
 import io
 import os
+
+import numpy as np
 import py3Dmol
-from Bio.PDB import MMCIFParser, MMCIFIO
-from ui_components.utils import save_temp_file
-from resiruler.wrappers.usalign_wrapper import run_usalign_matrix_only
-from resiruler.core.auto_alignment import filter_and_write_aligned_maps
+import streamlit as st
+from Bio.PDB import MMCIFIO, MMCIFParser
+
+from src.resiruler.core.auto_alignment import filter_and_write_aligned_maps
+from src.resiruler.wrappers.usalign_wrapper import run_usalign_matrix_only
+from ui.widgets.utils import save_temp_file
 
 def apply_transform(structure, rotation, translation):
     """

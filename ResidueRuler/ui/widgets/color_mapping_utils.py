@@ -1,8 +1,8 @@
+"""Color mapping utilities for gradient and discrete palette UI components."""
+import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
-import matplotlib.colors as mcolors
 from matplotlib.colors import LinearSegmentedColormap
-import numpy as np
 
 
 def get_coloring_values(min=0.0, max=100.0, key=""):

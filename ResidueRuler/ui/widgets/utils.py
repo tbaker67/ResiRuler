@@ -1,16 +1,24 @@
-import tempfile
-import numpy as np
-import os
-import streamlit as st
+"""Utility functions and UI widgets for the ResiRuler Streamlit interface."""
 import io
-from io import BytesIO
+import os
+import tempfile
 import zipfile
-from resiruler.core.auto_alignment import StructureMapper, EnsembleMapper
-from resiruler.core.structure_parsing import load_structure, extract_res_from_chain
-from resiruler.visualization.plotting import plot_interactive_contact_map, plot_contacts_gained, plot_contacts_lost, plot_comparison_with_contact_filter
 from contextlib import contextmanager
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+from Bio.Align import PairwiseAligner, substitution_matrices
 from Bio.PDB.mmcifio import MMCIFIO
-from Bio.Align import substitution_matrices
+
+from src.resiruler.core.auto_alignment import EnsembleMapper, StructureMapper
+from src.resiruler.core.structure_parsing import extract_res_from_chain, load_structure
+from src.resiruler.viz.plotting import (
+    plot_comparison_with_contact_filter,
+    plot_contacts_gained,
+    plot_contacts_lost,
+    plot_interactive_contact_map,
+)
 
 @contextmanager 
 def struct_to_temp_cif(structure):
@@ -34,8 +42,9 @@ def save_temp_file(uploaded_file):
         tmp_file.write(uploaded_file.getbuffer())
         return tmp_file.name
 
+
 def create_downloadable_zip(files_dict):
-    buffer = BytesIO()
+    buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w') as z:
         for filename, content in files_dict.items():
             z.writestr(filename, content)
@@ -129,7 +138,6 @@ def load_structures_if_new(cif_files, name_key_prefix, struct_key_prefix):
 
     return structures
 
-import pandas as pd
 
 def chain_mapping_input(ref_chains, tgt_chains, default=None, key="chain_mapping"):
     """
@@ -239,7 +247,6 @@ def create_downloadable_zip_grouped(file_groups):
     buffer.seek(0)
     return buffer
 
-from Bio.Align import PairwiseAligner, substitution_matrices
 
 PROTEIN_SUBSTITUTION_MATRICES = [
     "BLOSUM62","BLOSUM45", "BLOSUM50", "BLOSUM89", "BLOSUM90", "BLASTP", "DAYHOFF", "FENG", "GENETIC", "GONNET1992", "JOHNSON", "JONES","LEVIN","MCLACHLAN", "MDM78", 
