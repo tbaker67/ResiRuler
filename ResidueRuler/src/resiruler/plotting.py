@@ -168,6 +168,131 @@ def plot_interactive_contact_map(matrix, lower_threshold=None, upper_threshold=N
 
     return fig
 
+
+def plot_comparison_with_contact_filter(compare_matrix, contact_threshold=15.0, title=None, min_val=None, max_val=None):
+    """
+    Plot comparison matrix showing only ΔDistance where contacts exist in BOTH structures.
+    
+    Args:
+        compare_matrix: CompareDistanceMatrix object
+        contact_threshold: Distance cutoff for defining a "contact" (Å)
+        title: Plot title
+        min_val, max_val: Color scale bounds
+    
+    Returns:
+        Plotly figure
+    """
+    # Get masks for contacts in each structure
+    ref_contacts = compare_matrix.ref_mat < contact_threshold
+    tgt_contacts = compare_matrix.tgt_mat < contact_threshold
+    
+    # Show ΔDistance only where BOTH have contacts
+    shared_contacts = ref_contacts & tgt_contacts
+    mat = np.where(shared_contacts, compare_matrix.mat, np.nan)
+    
+    labels = [f"{chain}-{resid[1]}{resid[2]}" for (chain, resid) in compare_matrix.index_map.keys()]
+    
+    vmax = np.nanmax(np.abs(mat)) if not np.isnan(mat).all() else 1
+    
+    fig = go.Figure(data=go.Heatmap(
+        z=mat,
+        x=labels,
+        y=labels,
+        colorscale="RdBu_r",
+        zmid=0.0,
+        zmin=min_val if min_val is not None else -vmax,
+        zmax=max_val if max_val is not None else vmax,
+        colorbar=dict(title="ΔDistance (Å)"),
+        hovertemplate="Residue 1: %{x}<br>Residue 2: %{y}<br>ΔDistance: %{z:.2f} Å<extra></extra>"
+    ))
+
+    fig.update_layout(
+        title=title or f"Shared Contacts (both < {contact_threshold}Å)",
+        xaxis_title="Residue",
+        yaxis_title="Residue",
+        autosize=False,
+        width=800,
+        height=800
+    )
+
+    return fig
+
+
+def plot_contacts_gained(compare_matrix, contact_threshold=15.0, title=None):
+    """
+    Plot contacts that are GAINED in target (not in ref, present in tgt).
+    Shows the target distance for gained contacts.
+    """
+    ref_contacts = compare_matrix.ref_mat < contact_threshold
+    tgt_contacts = compare_matrix.tgt_mat < contact_threshold
+    
+    # Gained = not in ref, but in tgt
+    gained = ~ref_contacts & tgt_contacts
+    mat = np.where(gained, compare_matrix.tgt_mat, np.nan)
+    
+    labels = [f"{chain}-{resid[1]}{resid[2]}" for (chain, resid) in compare_matrix.index_map.keys()]
+    
+    n_gained = np.sum(gained) // 2
+    
+    fig = go.Figure(data=go.Heatmap(
+        z=mat,
+        x=labels,
+        y=labels,
+        colorscale="Greens",
+        zmin=0,
+        zmax=contact_threshold,
+        colorbar=dict(title="Distance (Å)"),
+        hovertemplate="Residue 1: %{x}<br>Residue 2: %{y}<br>Target Distance: %{z:.2f} Å<extra></extra>"
+    ))
+
+    fig.update_layout(
+        title=title or f"Contacts Gained ({n_gained} pairs, tgt < {contact_threshold}Å, ref ≥ {contact_threshold}Å)",
+        xaxis_title="Residue",
+        yaxis_title="Residue",
+        autosize=False,
+        width=800,
+        height=800
+    )
+
+    return fig
+
+
+def plot_contacts_lost(compare_matrix, contact_threshold=15.0, title=None):
+    """
+    Plot contacts that are LOST in target (in ref, not in tgt).
+    Shows the reference distance for lost contacts.
+    """
+    ref_contacts = compare_matrix.ref_mat < contact_threshold
+    tgt_contacts = compare_matrix.tgt_mat < contact_threshold
+    
+    lost = ref_contacts & ~tgt_contacts
+    mat = np.where(lost, compare_matrix.ref_mat, np.nan)
+    
+    labels = [f"{chain}-{resid[1]}{resid[2]}" for (chain, resid) in compare_matrix.index_map.keys()]
+    
+    n_lost = np.sum(lost) // 2
+    fig = go.Figure(data=go.Heatmap(
+        z=mat,
+        x=labels,
+        y=labels,
+        colorscale="Reds",
+        zmin=0,
+        zmax=contact_threshold,
+        colorbar=dict(title="Distance (Å)"),
+        hovertemplate="Residue 1: %{x}<br>Residue 2: %{y}<br>Reference Distance: %{z:.2f} Å<extra></extra>"
+    ))
+
+    fig.update_layout(
+        title=title or f"Contacts Lost ({n_lost} pairs, ref < {contact_threshold}Å, tgt ≥ {contact_threshold}Å)",
+        xaxis_title="Residue",
+        yaxis_title="Residue",
+        autosize=False,
+        width=800,
+        height=800
+    )
+
+    return fig
+
 def plot_all_matrices_ensemble(ref_dm, tgt_dms_dict, compare_dms_dict, lower_threshold=None, upper_threshold=None):
     """
     This takes outputs produce by the EnsembleMapper calc_matrices functions and produces dictionaries the contain plotly objects for interactive contact maps

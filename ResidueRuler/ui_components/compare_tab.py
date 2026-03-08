@@ -1,9 +1,16 @@
+import os
 import streamlit as st
-from ui_components.utils import chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments,get_measurement_mode
-from src.resiruler.plotting import plot_distance_difference, plot_interactive_contact_map, plot_all_matrices_ensemble
+from ui_components.utils import (
+    chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, 
+    get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments, 
+    get_measurement_mode, distance_threshold_ui, get_chain_pair_options, display_chain_pair_selector
+)
+from src.resiruler.plotting import (
+    plot_distance_difference, plot_interactive_contact_map, plot_all_matrices_ensemble,
+    plot_comparison_with_contact_filter, plot_contacts_gained, plot_contacts_lost
+)
 import numpy as np
 from Bio.Align import PairwiseAligner, substitution_matrices
-
 
 def show_compare_tab():
     st.header("Compare Distances within two structures")
@@ -21,10 +28,6 @@ def show_compare_tab():
         ref_chains = [ref_chain.id for ref_chain in ref_structure[0].get_chains()]
         chain_mappings = get_chain_mappings_for_targets(tgt_structures,ref_chains, key="compare_mappings")
 
-       
-    #get threshold and do alignments
-    
-    
     st.session_state.setdefault("mapper", None)
     with st.container():
         col1, col2 = st.columns(2)
@@ -42,33 +45,27 @@ def show_compare_tab():
     
     if st.session_state.mapper is not None:
         show_alignments(st.session_state.mapper, key="compare_alignment")
-    ##TODO: Allow for filtering to only matched chains across all
+
     selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")
 
     protein_mode, nucleic_mode = get_measurement_mode(key="compare_measurement_mode")
 
+    st.subheader("Display Settings")
+    
+    enable_threshold, lower_threshold, upper_threshold = distance_threshold_ui(
+        key_prefix="compare_contact"
+    )
+    
+    contact_threshold = upper_threshold if enable_threshold else None
+
     if st.button("Compare") and st.session_state.mapper:
         st.session_state.mapper.set_selected_global_coords(selected_chains, protein_mode=protein_mode, nucleic_mode=nucleic_mode)
         ref_dm, tgt_dms_dict, compare_dms_dict = st.session_state.mapper.calc_matrices()
-        
-        ref_fig, tgt_figs_dict, compare_figs_dict = plot_all_matrices_ensemble(
-            ref_dm, tgt_dms_dict, compare_dms_dict, lower_threshold=-10000, upper_threshold=10000
-        )
-
-        
         st.session_state.ref_dm = ref_dm
         st.session_state.tgt_dms_dict = tgt_dms_dict
         st.session_state.compare_dms_dict = compare_dms_dict
-        st.session_state.ref_fig = ref_fig
-        st.session_state.tgt_figs_dict = tgt_figs_dict
-        st.session_state.compare_figs_dict = compare_figs_dict
-        st.session_state.compare_dfs = {
-            tgt_name: compare_dms_dict[tgt_name].convert_to_df()
-            for tgt_name in compare_dms_dict
-        }
+    if "ref_dm" in st.session_state and st.session_state.ref_dm is not None:
 
-   
-    if "ref_fig" in st.session_state and st.session_state.ref_fig:
         target_names = list(st.session_state.tgt_dms_dict.keys())
         selected_target = st.selectbox(
             "Select target structure to display",
@@ -76,13 +73,102 @@ def show_compare_tab():
             key="selected_target_display"
         )
 
-        #show plots
-        st.plotly_chart(st.session_state.ref_fig, use_container_width=False)
-        st.plotly_chart(st.session_state.tgt_figs_dict[selected_target], use_container_width=False)
-        st.plotly_chart(st.session_state.compare_figs_dict[selected_target], use_container_width=False)
-
-        compare_df = st.session_state.compare_dfs[selected_target]
-        st.dataframe(
-            compare_df.drop(columns=['Coord1_ref', 'Coord2_ref', 'Coord1_tgt', 'Coord2_tgt']),
-            use_container_width=True
+        residue_count = len(st.session_state.ref_dm.index_map)
+        if residue_count > 2000:
+            st.info(f"Large structure detected ({residue_count:,} residues). Chain-pair view recommended for better performance.")
+        
+        display_mode = st.radio(
+            "Display Mode",
+            ["Full Contact Maps", "Chain Pair View"],
+            index=1 if residue_count > 2000 else 0,
+            horizontal=True,
+            help="Full view shows entire contact map. Chain pair view lets you select specific chain interactions for large structures.",
+            key="display_mode"
         )
+        
+        if display_mode == "Full Contact Maps":
+            if "ref_fig" not in st.session_state or st.session_state.ref_fig is None:
+                with st.spinner("Generating full contact maps (this may take a moment for large structures)..."):
+                    ref_fig, tgt_figs_dict, compare_figs_dict = plot_all_matrices_ensemble(
+                        st.session_state.ref_dm, st.session_state.tgt_dms_dict, 
+                        st.session_state.compare_dms_dict, 
+                        lower_threshold=lower_threshold, upper_threshold=upper_threshold
+                    )
+                    st.session_state.ref_fig = ref_fig
+                    st.session_state.tgt_figs_dict = tgt_figs_dict
+                    st.session_state.compare_figs_dict = compare_figs_dict
+            
+            st.plotly_chart(st.session_state.ref_fig, use_container_width=False)
+            st.plotly_chart(st.session_state.tgt_figs_dict[selected_target], use_container_width=False)
+            
+            if enable_threshold and contact_threshold is not None:
+                compare_dm = st.session_state.compare_dms_dict[selected_target]
+                
+                st.markdown("#### Distance Changes in Shared Contacts")
+                shared_fig = plot_comparison_with_contact_filter(
+                    compare_dm, contact_threshold=contact_threshold,
+                    title=f"ΔDistance (shared contacts < {contact_threshold}Å)"
+                )
+                st.plotly_chart(shared_fig, use_container_width=False)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("#### Contacts Gained in Target")
+                    gained_fig = plot_contacts_gained(
+                        compare_dm, contact_threshold=contact_threshold
+                    )
+                    gained_fig.update_layout(width=600, height=600)
+                    st.plotly_chart(gained_fig, use_container_width=True)
+                    
+                with col2:
+                    st.markdown("#### Contacts Lost in Target")
+                    lost_fig = plot_contacts_lost(
+                        compare_dm, contact_threshold=contact_threshold
+                    )
+                    lost_fig.update_layout(width=600, height=600)
+                    st.plotly_chart(lost_fig, use_container_width=True)
+            else:
+                st.plotly_chart(st.session_state.compare_figs_dict[selected_target], use_container_width=False)
+            
+            st.caption("To refresh plots with new threshold settings, click 'Compare' again.")
+        else:
+            display_chain_pair_selector(
+                st.session_state.ref_dm,
+                st.session_state.tgt_dms_dict[selected_target],
+                st.session_state.compare_dms_dict[selected_target],
+                selected_target,
+                lower_threshold, upper_threshold,
+                contact_threshold=contact_threshold if enable_threshold else None,
+            )
+
+        st.subheader("Export Data")
+        
+        compare_dm = st.session_state.compare_dms_dict[selected_target]
+        total_pairs = len(compare_dm.index_map) * (len(compare_dm.index_map) - 1) // 2
+        
+        st.caption(f"Full dataset: {total_pairs:,} residue pairs")
+        
+        output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "output")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        csv_filename = f"comparison_{selected_target}.csv"
+        csv_filepath = os.path.join(output_dir, csv_filename)
+        
+        if st.button("Export Full Comparison to CSV", key="export_csv"):
+            with st.spinner(f"Exporting {total_pairs:,} pairs to CSV (streaming to avoid memory issues)..."):
+                rows_written = compare_dm.export_to_csv_streaming(csv_filepath)
+                st.success(f"Exported {rows_written:,} rows to: `{csv_filepath}`")
+                
+                # For smaller files direct download
+                if total_pairs < 500000:
+                    with open(csv_filepath, 'r') as f:
+                        csv_data = f.read()
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv_data,
+                        file_name=csv_filename,
+                        mime="text/csv",
+                        key="download_csv"
+                    )
+                else:
+                    st.info(f"File is large ({total_pairs:,} pairs). Download from: `{csv_filepath}`")

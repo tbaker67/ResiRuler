@@ -78,6 +78,45 @@ class DistanceMatrix:
 
         # Concatenate only at the end
         return pd.concat(dfs, ignore_index=True)
+
+    def get_submatrix(self, chain_ids=None, residue_ranges=None):
+        """
+        Extract a submatrix for specific chains and/or residue ranges.
+        """
+        keys = list(self.index_map.keys())
+        
+        filtered_indices = []
+        for idx, (chain, resid) in enumerate(keys):
+            if chain_ids is not None and chain not in chain_ids:
+                continue
+
+            if residue_ranges is not None and chain in residue_ranges:
+                start, end = residue_ranges[chain]
+                resnum = resid[1]  # resid is (hetflag, resnum, icode)
+                if not (start <= resnum <= end):
+                    continue
+            filtered_indices.append(idx)
+        
+        if not filtered_indices:
+            raise ValueError("No residues match the specified filters.")
+        
+
+        filtered_indices = np.array(filtered_indices)
+        sub_mat = self.mat[np.ix_(filtered_indices, filtered_indices)]
+        sub_coords = self.coords[filtered_indices]
+        sub_index_map = {keys[i]: new_idx for new_idx, i in enumerate(filtered_indices)}
+        
+
+        new_dm = DistanceMatrix.__new__(DistanceMatrix)
+        new_dm.coords = sub_coords
+        new_dm.index_map = sub_index_map
+        new_dm.mat = sub_mat
+        new_dm.res_id_mapping = self.res_id_mapping
+        return new_dm
+
+    def get_size(self):
+        """Return the number of residues in the matrix."""
+        return len(self.index_map)
     
 
 class CompareDistanceMatrix:
@@ -100,26 +139,106 @@ class CompareDistanceMatrix:
     def get_coords(self, key):
         return self.ref_coords[self.index_map[key]], self.tgt_coords[self.index_map[key]]
 
-    def convert_to_df(self):
-
+    def convert_to_df(self, include_coords=False):
+        """
+        Convert the comparison matrix to a DataFrame.
+        """
         keys = list(self.shared_keys)
         n = len(keys)
 
         triu_i, triu_j = np.triu_indices(n, k=1)
 
-        df = pd.DataFrame({
-            'ChainID_Resnum1_ref': [f"{keys[i][0]}-{keys[i][1][1]}{keys[i][1][2]}" for i in triu_i],
-            'ChainID_Resnum2_ref': [f"{keys[j][0]}-{keys[j][1][1]}{keys[j][1][2]}" for j in triu_j],
-            'Coord1_ref': [self.ref_coords[i].tolist() for i in triu_i],  # convert np arrays to lists
-            'Coord2_ref': [self.ref_coords[j].tolist() for j in triu_j],
-            'ChainID_Resnum1_tgt': [f"{self.res_id_mapping[keys[i]][0]}-{self.res_id_mapping[keys[i]][1][1]}{self.res_id_mapping[keys[i]][1][2]}" for i in triu_i],
-            'ChainID_Resnum2_tgt': [f"{self.res_id_mapping[keys[j]][0]}-{self.res_id_mapping[keys[j]][1][1]}{self.res_id_mapping[keys[j]][1][2]}" for j in triu_j],
-            'Coord1_tgt': [self.tgt_coords[i].tolist() for i in triu_i],  # convert np arrays to lists
-            'Coord2_tgt': [self.tgt_coords[j].tolist() for j in triu_j],
-            '∆ distance': self.mat[triu_i, triu_j]
-        })
+        ref_labels = np.array([f"{k[0]}-{k[1][1]}{k[1][2]}" for k in keys])
+        tgt_labels = np.array([f"{self.res_id_mapping[k][0]}-{self.res_id_mapping[k][1][1]}{self.res_id_mapping[k][1][2]}" for k in keys])
 
-        return df
+        data = {
+            'ChainID_Resnum1_ref': ref_labels[triu_i],
+            'ChainID_Resnum2_ref': ref_labels[triu_j],
+            'ChainID_Resnum1_tgt': tgt_labels[triu_i],
+            'ChainID_Resnum2_tgt': tgt_labels[triu_j],
+            '∆ distance': self.mat[triu_i, triu_j]
+        }
+
+        if include_coords:
+            data['Coord1_ref'] = [self.ref_coords[i].tolist() for i in triu_i]
+            data['Coord2_ref'] = [self.ref_coords[j].tolist() for j in triu_j]
+            data['Coord1_tgt'] = [self.tgt_coords[i].tolist() for i in triu_i]
+            data['Coord2_tgt'] = [self.tgt_coords[j].tolist() for j in triu_j]
+
+        return pd.DataFrame(data)
+
+    def get_submatrix(self, chain_ids=None, residue_ranges=None):
+        """
+        Extract a submatrix for specific chains and/or residue ranges.
+        """
+        keys = list(self.index_map.keys())
+        
+        filtered_indices = []
+        for idx, (chain, resid) in enumerate(keys):
+            if chain_ids is not None and chain not in chain_ids:
+                continue
+            if residue_ranges is not None and chain in residue_ranges:
+                start, end = residue_ranges[chain]
+                resnum = resid[1]  # resid is (hetflag, resnum, icode)
+                if not (start <= resnum <= end):
+                    continue
+            filtered_indices.append(idx)
+        
+        if not filtered_indices:
+            raise ValueError("No residues match the specified filters.")
+        
+        # Extract submatrices
+        filtered_indices = np.array(filtered_indices)
+        filtered_keys = [keys[i] for i in filtered_indices]
+        
+        # Create new CompareDistanceMatrix with subset
+        new_cdm = CompareDistanceMatrix.__new__(CompareDistanceMatrix)
+        new_cdm.shared_keys = set(filtered_keys)
+        new_cdm.index_map = {key: new_idx for new_idx, key in enumerate(filtered_keys)}
+        new_cdm.res_id_mapping = {k: self.res_id_mapping[k] for k in filtered_keys if k in self.res_id_mapping}
+        new_cdm.ref_coords = self.ref_coords[filtered_indices]
+        new_cdm.tgt_coords = self.tgt_coords[filtered_indices]
+        new_cdm.ref_mat = self.ref_mat[np.ix_(filtered_indices, filtered_indices)]
+        new_cdm.tgt_mat = self.tgt_mat[np.ix_(filtered_indices, filtered_indices)]
+        new_cdm.mat = self.mat[np.ix_(filtered_indices, filtered_indices)]
+        return new_cdm
+
+    def get_size(self):
+        """Return the number of residues in the matrix."""
+        return len(self.index_map)
+    
+    def export_to_csv_streaming(self, filepath, chunk_size=5000):
+        """
+        Export comparison data to CSV using streaming to minimize memory usage.
+        """
+        keys = list(self.shared_keys)
+        n = len(keys)
+        
+        ref_labels = [f"{k[0]}-{k[1][1]}{k[1][2]}" for k in keys]
+        tgt_labels = [f"{self.res_id_mapping[k][0]}-{self.res_id_mapping[k][1][1]}{self.res_id_mapping[k][1][2]}" for k in keys]
+        
+        rows_written = 0
+        buffer = []
+        
+        with open(filepath, 'w') as f:
+            f.write("ChainID_Resnum1_ref,ChainID_Resnum2_ref,ChainID_Resnum1_tgt,ChainID_Resnum2_tgt,delta_distance\n")
+            
+            # Write data to avoid duplicates)
+            for i in range(n):
+                for j in range(i + 1, n):
+                    row = f"{ref_labels[i]},{ref_labels[j]},{tgt_labels[i]},{tgt_labels[j]},{self.mat[i, j]:.6f}\n"
+                    buffer.append(row)
+                    
+                    if len(buffer) >= chunk_size:
+                        f.writelines(buffer)
+                        rows_written += len(buffer)
+                        buffer = []
+            
+            if buffer:
+                f.writelines(buffer)
+                rows_written += len(buffer)
+        
+        return rows_written
     
 def compute_distance(coord1, coord2):
     if coord1 is None or coord2 is None:

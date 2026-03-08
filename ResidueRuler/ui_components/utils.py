@@ -1,14 +1,13 @@
 import tempfile
+import numpy as np
 import os
 import streamlit as st
-import json
-import re 
-import base64
 import io
 from io import BytesIO
 import zipfile
 from src.resiruler.auto_alignment import StructureMapper, EnsembleMapper
 from src.resiruler.structure_parsing import load_structure, extract_res_from_chain
+from src.resiruler.plotting import plot_interactive_contact_map, plot_contacts_gained, plot_contacts_lost, plot_comparison_with_contact_filter
 from contextlib import contextmanager
 from Bio.PDB.mmcifio import MMCIFIO
 from Bio.Align import substitution_matrices
@@ -438,3 +437,170 @@ def filter_df_by_chains(df, selected_chains):
     chain1 = df['ChainID_Resnum1'].str.split('-').str[0]
     mask = chain1.isin(selected_chains)
     return df[mask].reset_index(drop=True)
+
+def distance_threshold_ui(key_prefix="distance_threshold"):
+    """
+    Function to allow user input for distance thresholding with a double-ended slider.
+    """
+    enable_threshold = st.checkbox(
+        "Enable contact filtering",
+        value=False,
+        help="Filter displayed contacts by distance range. Shows shared contacts, gained, and lost.",
+        key=f"{key_prefix}_enable"
+    )
+    
+    if not enable_threshold:
+        return False, None, None
+    
+    st.markdown("**Distance Range (Å)**")
+    
+    slider_values = st.slider(
+        "Distance range",
+        min_value=0.0, max_value=100.0,
+        value=(0.0, 15.0),
+        step=0.5,
+        key=f"{key_prefix}_range_slider",
+        label_visibility="collapsed"
+    )
+    
+    col_low, col_high = st.columns(2)
+    with col_low:
+        lower_num = st.number_input(
+            "Lower (Å)",
+            min_value=0.0, max_value=100.0,
+            value=slider_values[0],
+            step=0.5,
+            key=f"{key_prefix}_lower_num"
+        )
+    with col_high:
+        upper_num = st.number_input(
+            "Upper (Å)",
+            min_value=0.0, max_value=200.0,
+            value=slider_values[1],
+            step=0.5,
+            key=f"{key_prefix}_upper_num"
+        )
+    
+    # Prefer numeric input
+    lower_threshold = lower_num if lower_num != slider_values[0] else slider_values[0]
+    upper_threshold = upper_num if upper_num != slider_values[1] else slider_values[1]
+    
+    if lower_threshold >= upper_threshold:
+        st.warning("Lower threshold must be less than upper threshold.")
+    
+    st.caption(f"Showing contacts with distances between {lower_threshold:.1f}Å and {upper_threshold:.1f}Å")
+    
+    return enable_threshold, lower_threshold, upper_threshold
+
+def get_chain_pair_options(index_map):
+    """Generate list of chain pair options from index_map."""
+    chains = sorted(set(chain for chain, _ in index_map.keys()))
+    pairs = []
+    for i, c1 in enumerate(chains):
+        for c2 in chains[i:]:  # Include self-pairs and upper triangle
+            if c1 == c2:
+                pairs.append((c1, c2, f"{c1} (intra-chain)"))
+            else:
+                pairs.append((c1, c2, f"{c1} × {c2}"))
+    return chains, pairs
+
+
+def display_chain_pair_selector(ref_dm, tgt_dm, compare_dm, selected_target, 
+                                 lower_threshold, upper_threshold, contact_threshold=None):
+    """Display chain-pair selector for large structures."""
+    chains, pairs = get_chain_pair_options(ref_dm.index_map)
+    
+    st.markdown("### Select Chain Interactions to Display")
+    st.caption("For large structures, select specific chain pairs to view interactively.")
+    pair_labels = [p[2] for p in pairs]
+    default_selection = pair_labels[:min(3, len(pair_labels))]
+    
+    selected_pairs = st.multiselect(
+        "Chain pairs",
+        pair_labels,
+        default=default_selection,
+        help="Select which chain interactions to display. Each pair will show as a separate heatmap.",
+        key="chain_pair_selector"
+    )
+    
+    if not selected_pairs:
+        st.warning("Select at least one chain pair to display.")
+        return
+    
+    if st.button("Show Selected Chain Pairs", key="show_chain_pairs"):
+        # Map labels back to chain IDs
+        label_to_chains = {p[2]: (p[0], p[1]) for p in pairs}
+        
+        for pair_label in selected_pairs:
+            c1, c2 = label_to_chains[pair_label]
+            chain_ids = [c1] if c1 == c2 else [c1, c2]
+            st.markdown(f"#### {pair_label}")
+            
+            try:
+                ref_sub = ref_dm.get_submatrix(chain_ids=chain_ids)
+                tgt_sub = tgt_dm.get_submatrix(chain_ids=chain_ids)
+                compare_sub = compare_dm.get_submatrix(chain_ids=chain_ids)
+                
+                sub_size = ref_sub.get_size()
+                st.caption(f"{sub_size} residues")
+                
+                ref_mat_filtered = ref_sub.mat
+                tgt_mat_filtered = tgt_sub.mat
+                if lower_threshold is not None and upper_threshold is not None:
+                    ref_mat_filtered = np.where((ref_sub.mat > lower_threshold) & (ref_sub.mat < upper_threshold), ref_sub.mat, np.nan)
+                    tgt_mat_filtered = np.where((tgt_sub.mat > lower_threshold) & (tgt_sub.mat < upper_threshold), tgt_sub.mat, np.nan)
+                
+                shared_min = min(np.nanmin(ref_mat_filtered), np.nanmin(tgt_mat_filtered))
+                shared_max = max(np.nanmax(ref_mat_filtered), np.nanmax(tgt_mat_filtered))
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    ref_fig = plot_interactive_contact_map(
+                        ref_sub, lower_threshold=lower_threshold, upper_threshold=upper_threshold,
+                        title=f"Reference",
+                        min=shared_min, max=shared_max
+                    )
+                    ref_fig.update_layout(width=400, height=400)
+                    st.plotly_chart(ref_fig, use_container_width=True)
+                
+                with col2:
+                    tgt_fig = plot_interactive_contact_map(
+                        tgt_sub, lower_threshold=lower_threshold, upper_threshold=upper_threshold,
+                        title=f"Target",
+                        min=shared_min, max=shared_max
+                    )
+                    tgt_fig.update_layout(width=400, height=400)
+                    st.plotly_chart(tgt_fig, use_container_width=True)
+                
+                with col3:
+                    if contact_threshold is not None:
+                        compare_fig = plot_comparison_with_contact_filter(
+                            compare_sub, contact_threshold=contact_threshold,
+                            title=f"Δ Distance (shared)"
+                        )
+                    else:
+                        compare_fig = plot_interactive_contact_map(
+                            compare_sub, lower_threshold=lower_threshold, upper_threshold=upper_threshold,
+                            title=f"Δ Distance"
+                        )
+                    compare_fig.update_layout(width=400, height=400)
+                    st.plotly_chart(compare_fig, use_container_width=True)
+                
+                if contact_threshold is not None:
+                    col_g, col_l = st.columns(2)
+                    with col_g:
+                        gained_fig = plot_contacts_gained(compare_sub, contact_threshold=contact_threshold)
+                        gained_fig.update_layout(width=400, height=400)
+                        st.plotly_chart(gained_fig, use_container_width=True)
+                    with col_l:
+                        lost_fig = plot_contacts_lost(compare_sub, contact_threshold=contact_threshold)
+                        lost_fig.update_layout(width=400, height=400)
+                        st.plotly_chart(lost_fig, use_container_width=True)
+                
+                with st.expander(f"View {pair_label} data table"):
+                    pair_df = compare_sub.convert_to_df()
+                    st.dataframe(pair_df, use_container_width=True)
+                    
+            except ValueError as e:
+                st.error(f"Could not display {pair_label}: {e}")
