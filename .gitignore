@@ -25,6 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 .vscode
+.DS_Store
 MANIFEST
 
 # PyInstaller

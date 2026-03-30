@@ -26,15 +26,12 @@ from ui.widgets.utils import (
 def show_compare_tab():
     st.header("Compare Distances within two structures")
 
-    
     ref_cif = st.file_uploader("Upload Aligned Reference CIF", type=["cif"], key="reference1")
     tgt_cifs = st.file_uploader("Upload Aligned Target CIFs", type=["cif"], key="tgts", accept_multiple_files=True)
 
-    
     ref_structure = load_structure_if_new(ref_cif, "compare_name1", "compare_structure1")
     tgt_structures = load_structures_if_new(tgt_cifs, "compare_name2", "compare_structure2")
 
-   
     if ref_structure and tgt_structures:
         ref_chains = [ref_chain.id for ref_chain in ref_structure[0].get_chains()]
         chain_mappings = get_chain_mappings_for_targets(tgt_structures,ref_chains, key="compare_mappings")
