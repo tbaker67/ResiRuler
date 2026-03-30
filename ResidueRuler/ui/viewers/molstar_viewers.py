@@ -1,8 +1,5 @@
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
+"""Mol* viewer components for 3D structure visualization."""
 import matplotlib.colors as mcolors
-from src.resiruler.chimera_export import get_color_discrete, get_color_gradient
 import molviewspec as mvs
 
 def create_distance_shift_builder(

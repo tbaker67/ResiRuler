@@ -1,9 +1,12 @@
-import streamlit as st
-from pathlib import Path
+"""README tab displaying documentation from UIReadME.md."""
 import re
+from pathlib import Path
+
+import streamlit as st
 
 def show_readme_tab():
-    readme_path = Path(__file__).parent / "UIReadME.md"
+    # UIReadME.md is in ui/ directory (parent of tabs/)
+    readme_path = Path(__file__).parent.parent / "UIReadME.md"
     base_path = readme_path.parent  # for relative images
 
     if readme_path.exists():

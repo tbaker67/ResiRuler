@@ -1,13 +1,23 @@
-import Bio
-from Bio.Align import PairwiseAligner, substitution_matrices
-from Bio.PDB import MMCIFParser, MMCIFIO, Structure, Model
-from io import StringIO
-from .structure_parsing import extract_res_from_chain, extract_seq_from_chain, get_CA_from_residue, get_CB_from_residue, get_SC_from_residue, get_C1prime_from_residue, ChainCollection
-from .distance_calc import DistanceMatrix, CompareDistanceMatrix
-import numpy as np
-from scipy.optimize import linear_sum_assignment
+"""Automatic alignment and chain mapping between structures."""
 import copy
-import pandas as pd 
+from io import StringIO
+
+import numpy as np
+import pandas as pd
+from Bio.Align import PairwiseAligner, substitution_matrices
+from Bio.PDB import MMCIFIO, MMCIFParser, Model, Structure
+from scipy.optimize import linear_sum_assignment
+
+from .distance_calc import CompareDistanceMatrix, DistanceMatrix
+from .structure_parsing import (
+    ChainCollection,
+    extract_res_from_chain,
+    extract_seq_from_chain,
+    get_C1prime_from_residue,
+    get_CA_from_residue,
+    get_CB_from_residue,
+    get_SC_from_residue,
+)
 
 class ChainMapper:
     """

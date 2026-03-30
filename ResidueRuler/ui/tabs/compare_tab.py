@@ -1,29 +1,37 @@
+"""Compare tab for analyzing distance differences between structures."""
 import os
+
 import streamlit as st
-from ui_components.utils import (
-    chain_selector_ui, load_structure_if_new, get_threshold, load_structures_if_new, 
-    get_chain_mappings_for_targets, create_ensemble_mapper, aligner_ui, show_alignments, 
-    get_measurement_mode, distance_threshold_ui, get_chain_pair_options, display_chain_pair_selector
+
+from src.resiruler.viz.plotting import (
+    plot_all_matrices_ensemble,
+    plot_comparison_with_contact_filter,
+    plot_contacts_gained,
+    plot_contacts_lost,
 )
-from src.resiruler.plotting import (
-    plot_distance_difference, plot_interactive_contact_map, plot_all_matrices_ensemble,
-    plot_comparison_with_contact_filter, plot_contacts_gained, plot_contacts_lost
+from ui.widgets.utils import (
+    aligner_ui,
+    chain_selector_ui,
+    create_ensemble_mapper,
+    display_chain_pair_selector,
+    distance_threshold_ui,
+    get_chain_mappings_for_targets,
+    get_measurement_mode,
+    get_threshold,
+    load_structure_if_new,
+    load_structures_if_new,
+    show_alignments,
 )
-import numpy as np
-from Bio.Align import PairwiseAligner, substitution_matrices
 
 def show_compare_tab():
     st.header("Compare Distances within two structures")
 
-    
     ref_cif = st.file_uploader("Upload Aligned Reference CIF", type=["cif"], key="reference1")
     tgt_cifs = st.file_uploader("Upload Aligned Target CIFs", type=["cif"], key="tgts", accept_multiple_files=True)
 
-    
     ref_structure = load_structure_if_new(ref_cif, "compare_name1", "compare_structure1")
     tgt_structures = load_structures_if_new(tgt_cifs, "compare_name2", "compare_structure2")
 
-   
     if ref_structure and tgt_structures:
         ref_chains = [ref_chain.id for ref_chain in ref_structure[0].get_chains()]
         chain_mappings = get_chain_mappings_for_targets(tgt_structures,ref_chains, key="compare_mappings")

@@ -1,6 +1,7 @@
+"""Structure parsing utilities for CIF files and residue extraction."""
+import numpy as np
 from Bio.PDB import MMCIFParser
 from Bio.SeqUtils import seq1
-import numpy as np
 
 #This dictionary only works for cif files that are properly labeled
 #ie DNA residue names will always begin with D

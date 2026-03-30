@@ -1,10 +1,13 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
+"""Plotting utilities for contact maps and distance visualization."""
 import ast
 import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
-from src.resiruler.distance_calc import CompareDistanceMatrix
+
+from ..core.distance_calc import CompareDistanceMatrix
 
 
 def parse_coord_column(series):

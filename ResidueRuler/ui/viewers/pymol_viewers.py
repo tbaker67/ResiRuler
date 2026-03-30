@@ -1,13 +1,15 @@
-import py3Dmol
-import pandas as pd
-import matplotlib.pyplot as plt
+"""Py3Dmol and Plotly viewer components for 3D structure visualization."""
 import matplotlib.colors as mcolors
-from src.resiruler.chimera_export import get_color_discrete, get_color_gradient
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
+import py3Dmol
 
-
-
+from src.resiruler.viz.export_visualizations import (
+    get_color_discrete,
+    get_color_gradient,
+)
 
 def start_pymol_viewer(cif_file):
     if cif_file is not None:

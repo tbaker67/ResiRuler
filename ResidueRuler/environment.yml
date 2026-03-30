@@ -1,4 +1,4 @@
-name: resiruler-clean
+name: resiruler
 channels:
   - conda-forge
   - bioconda
@@ -7,15 +7,17 @@ dependencies:
   - python=3.11.9
   - numpy=1.26.4
   - pandas=2.3.1
-  - matplotlib=3.10.0
-  - biopython=1.85
   - scipy=1.16.0
-  - altair=5.5.0
+  - biopython=1.85
+  - matplotlib=3.10.0
   - pyarrow=13.0.0
   - usalign=20241201
-  - streamlit=1.47.0
-  - plotly=6.0.1
   - pip
+
   - pip:
-    - molviewspec==1.6.0
-    - py3dmol==2.5.2
+      - plotly==6.1.1
+      - kaleido==1.2.0
+      - streamlit==1.47.0
+      - altair==5.5.0
+      - molviewspec==1.6.0
+      - py3dmol==2.5.2
