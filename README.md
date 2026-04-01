@@ -160,4 +160,4 @@ MIT License
 
 ## Author
 
-Timothy Baker
+Timothy Baker, Wilhelm Salmen
