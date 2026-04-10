@@ -2,7 +2,8 @@
 import json
 import os
 from pathlib import Path
-
+from src.resiruler.viz.export_visualizations import save_bild_files_and_generate_chimerax_script
+import tempfile
 import streamlit as st
 
 from src.resiruler.viz.export_visualizations import (
@@ -85,7 +86,7 @@ def show_movement_tab():
         }
         mins = [df['Distance'].min() for df in filtered_movement_dfs.values()]
         vmin = min(mins)
-        
+
         maxes = [df['Distance'].max() for df in filtered_movement_dfs.values()]
         vmax = max(maxes)
 
@@ -98,16 +99,23 @@ def show_movement_tab():
         cmap_obj = build_gradient_cmap(palette, positions, min_val, max_val)
 
         structure_choices = {
-        f.name[:-4]:f for f in tgt_cifs
+            f.name[:-4]: f for f in tgt_cifs
         }
-        
 
         selected_structure = st.selectbox(
-        "Select structure for visualization",
-        options=list(structure_choices.keys())
+            "Select structure for visualization",
+            options=list(structure_choices.keys())
         )
-       
-        st.session_state.vector_view = plot_vectors_plotly(filtered_movement_dfs[selected_structure], cmap_obj, min_val, max_val)
+
+        fidelity = st.slider("Vector Fidelity (show every Nth vector)", min_value=1, max_value=20, value=5, step=1, key="movement_fidelity")
+
+        st.session_state.vector_view = plot_vectors_plotly(
+            filtered_movement_dfs[selected_structure],
+            cmap_obj,
+            min_val,
+            max_val,
+            fidelity=fidelity
+        )
         st.subheader("Movement Vectors Preview Visualization")
         st.plotly_chart(st.session_state.vector_view, use_container_width=True)
 
@@ -153,10 +161,12 @@ def show_movement_tab():
         st.session_state.defatt = defatt
         st.session_state.chimera_script = chimera_cxc
         st.session_state.pml_script = full_pml_script
-        st.session_state.bild_scripts, st.session_state.pml_arrows = generate_arrow_dicts(filtered_movement_dfs, cmap_obj, min_val, max_val)
+        st.session_state.bild_scripts, st.session_state.pml_arrows = generate_arrow_dicts(
+            filtered_movement_dfs, cmap_obj, min_val, max_val, fidelity=fidelity
+        )
 
         root_files = {
-        f"full_defattr.defattr": st.session_state.defatt,
+        "full_defattr.defattr": st.session_state.defatt,
         "chimera_coloring_script.cxc": st.session_state.chimera_script,
         "coloring_script.pml":st.session_state.pml_script
     }
@@ -168,8 +178,11 @@ def show_movement_tab():
             csv_dict[csv_filename] = df.to_csv(index=False)
 
         # --- Arrow files ---
-        bild_dict = st.session_state.bild_scripts  # assuming {filename: content}
+        bild_dict = st.session_state.bild_scripts  # {filename: content}
         pml_arrows_dict = st.session_state.pml_arrows
+
+        chimerax_script_content = save_bild_files_and_generate_chimerax_script(bild_dict)
+        bild_dict["open_all_bilds.cxc"] = chimerax_script_content
         # --- models (CIFs) ---
         models_dict = {}
         if ref_cif:
