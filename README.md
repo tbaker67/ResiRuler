@@ -38,7 +38,7 @@ conda activate resiruler
 ```
 Then use the streamlit command to launch the UI
 ```bash
-streamlit run ResidueRuler/ui_components/ui.py
+streamlit run ResidueRuler/ui/app.py
 ```
 A successful launch will provide this message in the terminal. Using the network url will allow others to access an independent instance of the Web Interface as long as they are connected to the same network as the deivce you launched from
 
