@@ -79,7 +79,7 @@ def show_movement_tab():
 
     
     if st.session_state.movement_dfs is not None:
-        selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")
+        selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare", key_prefix="")
         filtered_movement_dfs = {
             struct_name: filter_df_by_chains(df, selected_chains)
             for struct_name, df in st.session_state.movement_dfs.items()

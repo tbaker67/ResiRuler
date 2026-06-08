@@ -54,7 +54,7 @@ def show_compare_tab():
     if st.session_state.mapper is not None:
         show_alignments(st.session_state.mapper, key="compare_alignment")
 
-    selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare")
+    selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare", key_prefix="compare")
 
     protein_mode, nucleic_mode = get_measurement_mode(key="compare_measurement_mode")
 

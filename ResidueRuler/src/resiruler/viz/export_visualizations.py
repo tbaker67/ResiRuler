@@ -75,6 +75,8 @@ def generate_chimera_coloring_palette_string(palette, positions):
     
     return palette_string[:-1]
 
+def generate_chimera_key_string(palette, positions):
+    return "key " + " ".join(f"{color}:{int(round(position))}" for color, position in zip(palette, positions))
 
 def generate_pml_palette_string(palette):
     palette_string = ""
@@ -104,13 +106,13 @@ def generate_multiple_movement_scripts(movement_dfs, ref_name, palette, position
 
         ids += 2
 
+
     chimera_coloring_palette_string = generate_chimera_coloring_palette_string(palette, positions)
     full_cxc_script.write("open full_defattr.defattr \n")
     full_cxc_script.write(f"color #{1}-{ids - 1} grey \n")
     full_cxc_script.write(f"color byattribute r:distance #{1}-{ids - 1} target scab palette {chimera_coloring_palette_string}\n")
-    chimera_coloring_palette_string = chimera_coloring_palette_string.split(",", 1)[1]
-    chimera_key_string = chimera_coloring_palette_string.replace(",", " ") + ":"
-    full_cxc_script.write(f"key {chimera_key_string }\n")
+    chimera_key_string = generate_chimera_key_string(palette, positions)
+    full_cxc_script.write(f"{chimera_key_string}\n")
 
     pml_palette_string = generate_pml_palette_string(palette)
     full_pml_script.write(f'spectrum properties["distance"], {pml_palette_string}')

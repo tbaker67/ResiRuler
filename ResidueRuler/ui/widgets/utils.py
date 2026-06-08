@@ -64,6 +64,7 @@ def chain_selector_ui(structure, label="Select Chains to Visualize (Chains with 
     If "All" is selected along with individual chains, returns all chains EXCEPT those individual chains.
     As such, structure should only be a BioPython structure object, or a StructureMapper object from autoalignments.py
     """
+    key = key_prefix + "chain_selector"
     if structure is None:
         st.warning("No structure loaded. Please upload a file first.")
         return None
@@ -76,7 +77,7 @@ def chain_selector_ui(structure, label="Select Chains to Visualize (Chains with 
     
     multiselect_options = ["All"] + chain_options
     default_selection = ["All"] if default_all else []
-    selected = st.multiselect(label, multiselect_options, default=default_selection, key=key_prefix)
+    selected = st.multiselect(label, multiselect_options, default=default_selection, key=key)
     
     if "All" in selected and len(selected) > 1:
         excluded_chains = [c for c in selected if c != "All"]

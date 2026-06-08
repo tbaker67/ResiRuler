@@ -1,3 +1,4 @@
+
 # ResiRuler
 
 ResiRuler is a web interface based tool for analyzing and visualizing residue-level structural changes in biomolecular models. It supports measuring distances between annotated residues, comparing distances across aligned conformations, and visualizing movement vectors with options to visualize in ChimeraX
@@ -55,58 +56,56 @@ After uploading a CIF file, you can specify what chains in your structure you'd 
 
 ![Run Page 1](ResidueRuler/images/run/Run_Page1.png)
 
-After hitting "Run" a contact map as well as a table of all inter-residue distances will be calculated 
+After hitting "Run," a contact map and a table of all inter-residue distances will be calculated.
 
 ![Run Page 2](ResidueRuler/images/run/Run_Page2.png)
 
-You'll then be able to specify residue pairings as well as distance color thresholds for the link visualization
+Specify residue pairings and distance color thresholds for the link visualization.
 
 ![Run Page 3](ResidueRuler/images/run/Run_Page3.png)
 
-And will get a Pymol Visualization Preview, Distance table for selected pairs, and a script which will draw the links in chimeraX
+You will get a PyMol Visualization Preview, a distance table for selected pairs, and a script which will draw the links in ChimeraX.
 
 ![Run Page 4](ResidueRuler/images/run/Run_Page4.png)
 
-**Example ChimeraX Visualization**:
+**Example ChimeraX Visualization:**
 
 ![Distance Links Example](ResidueRuler/images/run/Link_Example.png)
 
 ---
 
-## 'The Align Tab'
 
-The "Align" tab allows for the alignment of any two genetically similar molecules. It performs alignment using [USalign's](https://www.nature.com/articles/s41592-022-01585-1) multimer alignment algorithm (MMalign).
+### The "Align" Tab
 
-Start by uploading files
+Align any two genetically similar molecules using [USalign's](https://www.nature.com/articles/s41592-022-01585-1) multimer alignment algorithm (MMalign). Use this tab before comparing or analyzing movement between structures.
+
+Start by uploading files:
 
 ![Align Page 1](ResidueRuler/images/align/Align_Page1.png)
 
-You'll get preview of the alignment
+Preview the alignment:
 ![Align Page 2](ResidueRuler/images/align/Align_Page2.png)
 
-There is also an option to "clean" the alignment to get rid of unmatched chains or residues, and those CIF files can be downloaded for future use.
+Optionally "clean" the alignment to remove unmatched chains or residues. Download cleaned CIF files for future use.
 ![Align Page 3](ResidueRuler/images/align/Align_Page3.png)
 
-
 ---
 
-## 'The "Compare" Tab'
 
----
+### The "Compare" Tab
 
-This tab is where you can compare inter-residue distances between (currently) two structures with multi-comparisons currently in progress.
+Compare inter-residue distances between two structures. Multi-comparison support is in progress.
 
-It offers auto-matching of chains between the two structures as well as the ability, to set an explicit mapping.
-If you use the auto-matching with multiple chains of the same sequence in each structure, it is important that you supply aligned structures either from the "Align" job, or any other alignment software of your choice.
+- Auto-matches chains between structures, or allows explicit mapping.
+- For best results, supply aligned structures from the **Align** tab or other alignment software.
 
 ![Compare Tab 1](ResidueRuler/images/compare/Compare_Page1.png)
 
-You'll have the option to specify which chains to look at, in addition to setting a minimum percent identity threshold which is used when matching chains together.
+Specify which chains to compare and set a minimum percent identity threshold for chain matching.
 ![Compare Tab 2](ResidueRuler/images/compare/Compare_Page2.png)
 
-This will produce contact maps for both structures provided, as well as a distance difference map which is essentially a subtraction of the two contact maps.
+Produces contact maps for both structures and a distance difference map (subtraction of the two contact maps).
 ![Compare Tab 3](ResidueRuler/images/compare/Compare_Page3.png)
-
 
 ---
 
