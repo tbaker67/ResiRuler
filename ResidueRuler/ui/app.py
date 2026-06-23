@@ -15,16 +15,24 @@ from ui.tabs.run_tab import show_run_tab
 st.set_page_config(layout="wide")
 st.title("ResiRuler")
 
-
-tab0,tab1,tab2,tab3,tab4 = st.tabs(["README","Run","Align", "Compare","Movement"])
+#Old version
+#tab0,tab1,tab2,tab3,tab4 = st.tabs(["README","Run","Align", "Compare","Movement"])
     
 #with tab0:
     #show_readme_tab()
 #with tab1:
     #show_run_tab()
-with tab2:
+#with tab2:
+    #show_align_tab()
+#with tab3:
+    #show_compare_tab()
+#with tab4: 
+    #show_movement_tab()
+#New version
+tab0,tab1,tab2 = st.tabs(["Align", "Compare","Movement"])
+with tab0:
     show_align_tab()
-with tab3:
+with tab1:
     show_compare_tab()
-with tab4: 
+with tab2: 
     show_movement_tab()
