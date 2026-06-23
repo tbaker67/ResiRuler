@@ -13,13 +13,13 @@ from ui.tabs.movement_tab import show_movement_tab
 from ui.tabs.readme_tab import show_readme_tab
 from ui.tabs.run_tab import show_run_tab
 st.set_page_config(layout="wide")
-st.title("ResiRuler Prototype UI")
+st.title("ResiRuler")
 
 
 tab0,tab1,tab2,tab3,tab4 = st.tabs(["README","Run","Align", "Compare","Movement"])
     
-with tab0:
-    show_readme_tab()
+#with tab0:
+    #show_readme_tab()
 #with tab1:
     #show_run_tab()
 with tab2:
