@@ -149,8 +149,7 @@ And then selecting the "distance" attribute in the window that pops up. This all
 
 ## Remote Access to Resiruler
 
-Detailed instructions on opening jupyter notebook
-Example port: 8888, example user: user
+Example port: 8501, example user: user
 Change your port # 
 
 Start interactive bash session
@@ -170,8 +169,9 @@ streamlit run app.py
 ```
 hostname = gpucomp-01
 
-```bash
 In new terminal window, forward port 8501
+
+```bash
 ssh -L 8501:localhost:8501 user@login.edu
 ssh -N -L 8501:localhost:8501 gpucomp-01
 ```
