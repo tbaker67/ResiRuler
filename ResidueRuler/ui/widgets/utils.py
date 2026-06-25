@@ -306,6 +306,17 @@ def aligner_ui(protein, key_prefix="aligner"):
 
     return aligner
 
+def full_aligner_ui(key):
+    with st.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Protein Pairwise Aligner Settings")
+            protein_aligner = aligner_ui(protein=True, key_prefix=f"{key} protein compare aligner")
+        with col2:
+            st.subheader("Nucleotide Pairwise Aligner Settings")
+            nucleotide_aligner = aligner_ui(protein=False, key_prefix=f"{key} nucleotide compare aligner")
+    return protein_aligner, nucleotide_aligner
+
 def show_alignments(ensemble_mapper, key="alignment_select"):
     """
     shows the alignment present in all structure mappers of a selected chiain in the reference
@@ -584,7 +595,6 @@ def display_chain_pair_selector(ref_dm, tgt_dm, compare_dm, selected_target,
                     ref_fig.update_layout(width=400, height=400)
                     st.plotly_chart(ref_fig, use_container_width=True)
                     add_svg_download(ref_fig, "ref_fig_map.svg")
-                    
                 
                 with col2:
                     tgt_fig = plot_interactive_contact_map(

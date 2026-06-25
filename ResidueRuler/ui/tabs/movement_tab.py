@@ -21,7 +21,7 @@ from ui.widgets.color_mapping_utils import (
     show_gradient_bar,
 )
 from ui.widgets.utils import (
-    aligner_ui,
+    full_aligner_ui,
     chain_selector_ui,
     create_downloadable_zip_grouped,
     create_ensemble_mapper,
@@ -51,16 +51,7 @@ def show_movement_tab():
         chain_mappings = get_chain_mappings_for_targets(tgt_structures,ref_chains, key="movement_mappings")
 
     st.session_state.setdefault("mapper", None)
-
-    with st.container():
-        # Alignment mode and matrix 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("Protein Pairwise Aligner Settings")
-            protein_aligner = aligner_ui(protein=True, key_prefix="protein movement aligner")
-        with col2:
-            st.subheader("Nucleotide Pairwise Aligner Settings")
-            nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide movement aligner")
+    protein_aligner, nucleotide_aligner = full_aligner_ui(key="displacement")
 
     pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0", "movement_pct_id")
 

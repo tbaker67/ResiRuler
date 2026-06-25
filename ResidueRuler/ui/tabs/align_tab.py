@@ -9,7 +9,7 @@ from Bio.PDB import MMCIFIO, MMCIFParser
 
 from src.resiruler.core.auto_alignment import filter_and_write_aligned_maps
 from src.resiruler.wrappers.usalign_wrapper import run_usalign_matrix_only
-from ui.widgets.utils import save_temp_file
+from ui.widgets.utils import save_temp_file, full_aligner_ui, get_threshold
 
 def apply_transform(structure, rotation, translation):
     """
@@ -118,6 +118,9 @@ def show_align_tab():
             mime="chemical/x-mm-cif"
         )
     
+    protein_aligner, nucleotide_aligner = full_aligner_ui(key="align")
+    pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0","align_pct_id")
+
     if st.button("Clean Alignment To Show Only Matched Residues/Chains"):
         if not all([struct1, struct2]):
             st.error("Please upload both structure files.")
@@ -129,7 +132,7 @@ def show_align_tab():
                     tgt_cif_stream = io.StringIO(st.session_state.aligned_cif)
 
                     ref_chain_cif, ref_res_cif, tgt_chain_cif, tgt_res_cif = filter_and_write_aligned_maps(
-                        ref_cif_stream, tgt_cif_stream, identity_threshold=95.0
+                        ref_cif_stream, tgt_cif_stream, protein_aligner, nucleotide_aligner, identity_threshold=pct_id_threshold
                     )
 
                     st.session_state["filtered_outputs"] = {

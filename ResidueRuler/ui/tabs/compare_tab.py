@@ -9,7 +9,7 @@ from src.resiruler.viz.plotting import (
     plot_contacts_lost,
 )
 from ui.widgets.utils import (
-    aligner_ui,
+    full_aligner_ui,
     chain_selector_ui,
     create_ensemble_mapper,
     display_chain_pair_selector,
@@ -48,14 +48,7 @@ def show_compare_tab():
         chain_mappings = get_chain_mappings_for_targets(tgt_structures,ref_chains, key="compare_mappings")
 
     st.session_state.setdefault("mapper", None)
-    with st.container():
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("Protein Pairwise Aligner Settings")
-            protein_aligner = aligner_ui(protein=True, key_prefix="protein compare aligner")
-        with col2:
-            st.subheader("Nucleotide Pairwise Aligner Settings")
-            nucleotide_aligner = aligner_ui(protein=False, key_prefix="nucleotide compare aligner")
+    protein_aligner, nucleotide_aligner = full_aligner_ui(key="compare")
 
     pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0","compare_pct_id")
 
