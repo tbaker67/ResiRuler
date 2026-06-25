@@ -156,7 +156,7 @@ Change your port #
 Start interactive bash session
 ```bash
 srun --partition=sb-gpu --nodes=1 --ntasks=1 --cpus-per-task=12 --mem-per-cpu=3g --gpus=2080ti:2 --time 4:00:00 --pty /bin/bash
-'''
+```
 Check which gpu you are using ex) gpucomp-01
 
 ```bash
