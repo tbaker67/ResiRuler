@@ -1,8 +1,7 @@
 """Compare tab for analyzing distance differences between structures."""
 import os
-
 import streamlit as st
-
+from io import BytesIO
 from src.resiruler.viz.plotting import (
     plot_all_matrices_ensemble,
     plot_comparison_with_contact_filter,
@@ -22,6 +21,18 @@ from ui.widgets.utils import (
     load_structures_if_new,
     show_alignments,
 )
+
+def add_svg_download(fig, filename):
+    svg_buffer = BytesIO()
+    fig.write_image(svg_buffer, format="svg")
+
+    st.download_button(
+        label="Download SVG",
+        data=svg_buffer.getvalue(),
+        file_name=filename,
+        mime="image/svg+xml",
+        key=f"download_{filename}"
+    )
 
 def show_compare_tab():
     st.header("Compare Distances within two structures")
@@ -107,7 +118,10 @@ def show_compare_tab():
                     st.session_state.compare_figs_dict = compare_figs_dict
             
             st.plotly_chart(st.session_state.ref_fig, use_container_width=False)
+            add_svg_download(st.session_state.ref_fig, "full_ref_fig_map.svg")
+
             st.plotly_chart(st.session_state.tgt_figs_dict[selected_target], use_container_width=False)
+            add_svg_download(st.session_state.tgt_fig, "full_tgt_fig_map.svg")
             
             if enable_threshold and contact_threshold is not None:
                 compare_dm = st.session_state.compare_dms_dict[selected_target]
@@ -117,7 +131,8 @@ def show_compare_tab():
                     compare_dm, contact_threshold=contact_threshold,
                     title=f"ΔDistance (shared contacts < {contact_threshold}Å)"
                 )
-                st.plotly_chart(shared_fig, use_container_width=False)
+                st.plotly_chart(shared_fig)
+                add_svg_download(shared_fig, "shared_fig.svg")
                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -127,6 +142,7 @@ def show_compare_tab():
                     )
                     gained_fig.update_layout(width=600, height=600)
                     st.plotly_chart(gained_fig, use_container_width=True)
+                    add_svg_download(gained_fig, "full_gained_fig_map.svg")
                     
                 with col2:
                     st.markdown("#### Contacts Lost in Target")
@@ -135,8 +151,10 @@ def show_compare_tab():
                     )
                     lost_fig.update_layout(width=600, height=600)
                     st.plotly_chart(lost_fig, use_container_width=True)
+                    add_svg_download(lost_fig, "full_lost_fig_map.svg")
             else:
                 st.plotly_chart(st.session_state.compare_figs_dict[selected_target], use_container_width=False)
+                add_svg_download(st.session_state.compare_figs_dict[selected_target], "compare_fig_map.svg")
             
             st.caption("To refresh plots with new threshold settings, click 'Compare' again.")
         else:

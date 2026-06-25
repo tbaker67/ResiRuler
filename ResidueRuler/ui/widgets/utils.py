@@ -1,9 +1,11 @@
 """Utility functions and UI widgets for the ResiRuler Streamlit interface."""
 import io
 import os
+import random
 import tempfile
 import zipfile
 from contextlib import contextmanager
+from io import BytesIO
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -511,6 +513,17 @@ def get_chain_pair_options(index_map):
                 pairs.append((c1, c2, f"{c1} × {c2}"))
     return chains, pairs
 
+def add_svg_download(fig, filename):
+    svg_buffer = BytesIO()
+    fig.write_image(svg_buffer, format="svg")
+
+    st.download_button(
+        label="Download SVG",
+        data=svg_buffer.getvalue(),
+        file_name=filename,
+        mime="image/svg+xml",
+        key=f"download_{random.random()}"
+    )
 
 def display_chain_pair_selector(ref_dm, tgt_dm, compare_dm, selected_target, 
                                  lower_threshold, upper_threshold, contact_threshold=None):
@@ -570,6 +583,8 @@ def display_chain_pair_selector(ref_dm, tgt_dm, compare_dm, selected_target,
                     )
                     ref_fig.update_layout(width=400, height=400)
                     st.plotly_chart(ref_fig, use_container_width=True)
+                    add_svg_download(ref_fig, "ref_fig_map.svg")
+                    
                 
                 with col2:
                     tgt_fig = plot_interactive_contact_map(
@@ -579,6 +594,7 @@ def display_chain_pair_selector(ref_dm, tgt_dm, compare_dm, selected_target,
                     )
                     tgt_fig.update_layout(width=400, height=400)
                     st.plotly_chart(tgt_fig, use_container_width=True)
+                    add_svg_download(tgt_fig, "tgt_fig_map.svg")
                 
                 with col3:
                     if contact_threshold is not None:
@@ -593,6 +609,7 @@ def display_chain_pair_selector(ref_dm, tgt_dm, compare_dm, selected_target,
                         )
                     compare_fig.update_layout(width=400, height=400)
                     st.plotly_chart(compare_fig, use_container_width=True)
+                    add_svg_download(compare_fig, "compare_fig_map.svg")
                 
                 if contact_threshold is not None:
                     col_g, col_l = st.columns(2)
@@ -600,10 +617,12 @@ def display_chain_pair_selector(ref_dm, tgt_dm, compare_dm, selected_target,
                         gained_fig = plot_contacts_gained(compare_sub, contact_threshold=contact_threshold)
                         gained_fig.update_layout(width=400, height=400)
                         st.plotly_chart(gained_fig, use_container_width=True)
+                        add_svg_download(gained_fig, "gained__fig_map.svg")
                     with col_l:
                         lost_fig = plot_contacts_lost(compare_sub, contact_threshold=contact_threshold)
                         lost_fig.update_layout(width=400, height=400)
                         st.plotly_chart(lost_fig, use_container_width=True)
+                        add_svg_download(lost_fig, "lost_fig_map.svg")
                 
                 with st.expander(f"View {pair_label} data table"):
                     pair_df = compare_sub.convert_to_df()
