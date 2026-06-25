@@ -147,6 +147,30 @@ And then selecting the "distance" attribute in the window that pops up. This all
 
 ![Movement Edit 2](ResidueRuler/images/movement/Movement_Edit2.png)
 
+## Remote Access to Resiruler
+
+Detailed instructions on opening jupyter notebook
+Example port: 8888, example user: user
+Change your port # 
+
+Start interactive bash session
+srun --partition=sb-gpu --nodes=1 --ntasks=1 --cpus-per-task=12 --mem-per-cpu=3g --gpus=2080ti:2 --time 4:00:00 --pty /bin/bash
+Check which gpu you are using ex) gpu.hpc.edu
+```bash
+Hostname
+conda activate resiruler
+cd path/Resiruler/ui/
+streamlit run app.py
+```
+hostname = gpucomp-01
+```bash
+In new terminal window, forward port 8501
+ssh -L 8501:localhost:8501 user@login.edu
+ssh -N -L 8501:localhost:8501 gpucomp-01
+```
+Enter password -nothing else will happen in this terminal window
+In web browser on local machine (your computer) enter link from Resiruler:
+localhost:8501
 
 ---
 
