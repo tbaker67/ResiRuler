@@ -190,11 +190,12 @@ class StructureMapper:
     Mapping is based on PCT identities and tiebreaks based on RMSD. It is most recommended to map only using aligned structures
     Otherwise the map may struggle a bit (This problem only really persists for symmetric assemblies however)
     """
-    def __init__(self, ref_structure, tgt_structure, protein_aligner, nucleotide_aligner):
+    def __init__(self, ref_structure, tgt_structure, protein_aligner, nucleotide_aligner, explicit_mapping):
         #self.map_id = map_id
         self.ref_structure = ref_structure
         self.tgt_structure = tgt_structure
         self.chain_mappings = {} # ref_chain_id -> ChainMapping object 
+        self.explicit_mapping = explicit_mapping
 
         self.protein_aligner = protein_aligner
         self.nucleotide_aligner = nucleotide_aligner
@@ -214,13 +215,66 @@ class StructureMapper:
         
         return aligner
     
-    
     def get_chain_sequence(self, structure, chain):
         key = (id(structure), chain.id)
         if key not in self._cached_sequences:
             seq = extract_seq_from_chain(chain)
             self._cached_sequences[key] = seq
         return self._cached_sequences[key]
+    
+    def align_seqs(self, ref_seq, tgt_seq, seq_type):
+        if seq_type == "protein":
+            alignment = self.protein_aligner.align(ref_seq, tgt_seq)[0]
+            aligned_ref_seq = alignment[0]
+            aligned_tgt_seq = alignment[1]
+
+        elif seq_type == "dna":
+            alignment = self.nucleotide_aligner.align(ref_seq, tgt_seq)[0]
+            aligned_ref_seq = alignment[0]
+            aligned_tgt_seq = alignment[1]
+
+        elif seq_type == 'rna':
+            #Substitution Matrices for the pairwise aligners are all set up to use T rather than U
+            #So we must replace U with T before aligning and then shift it back
+            converted_ref_seq = ref_seq.replace("U","T")
+            converted_tgt_seq = tgt_seq.replace("U","T")
+
+            alignment = self.nucleotide_aligner.align(converted_ref_seq, converted_tgt_seq)[0]
+            #Change T's back to U's
+            aligned_ref_seq = alignment[0].replace("T","U")
+            aligned_tgt_seq = alignment[1].replace("T","U")
+            
+        #unknown chain type so just skip it
+        else:
+            print(f"[WARNING] skipping due to an unknown chain type")
+
+        return aligned_ref_seq, aligned_tgt_seq, alignment
+
+    
+    def map_chains_explicit(self):
+        for ref_chain_id, (tgt_chain_id, seq_type) in self.explicit_mapping.items():
+            if not tgt_chain_id:
+                continue
+
+            ref_chain = self.ref_structure[0][ref_chain_id]
+            tgt_chain = self.tgt_structure[0][tgt_chain_id]
+
+            self.matched_ref_chains.add(ref_chain_id)
+            self.matched_tgt_chains.add(tgt_chain_id)
+
+            ref_seq = extract_seq_from_chain(ref_chain)
+            tgt_seq = extract_seq_from_chain(tgt_chain)
+
+            aligned_ref_seq, aligned_tgt_seq, alignment = self.align_seqs(ref_seq, tgt_seq, seq_type)
+            
+            self.chain_mappings[ref_chain_id] = ChainMapper(ref_chain,
+                                                            ref_seq, aligned_ref_seq,
+                                                            tgt_chain,
+                                                            tgt_seq,
+                                                            aligned_tgt_seq,
+                                                            alignment,
+                                                            seq_type
+                                                        )
 
     def map_chains(self,threshold):
         """
@@ -251,40 +305,21 @@ class StructureMapper:
         dna_aligner.match_score=5
         dna_aligner.mismatch_score=-4
 
+        if self.explicit_mapping:
+            self.map_chains_explicit()
+
         for ref_id, tgt_id, ref_info, tgt_info in ref_collection.valid_pairs(tgt_collection):
+            if self.explicit_mapping[ref_id][0]:
+              continue
 
-        
-            
-            if ref_info.type == "protein":
-                alignment = self.protein_aligner.align(ref_info.seq, tgt_info.seq)[0]
-                aligned_ref_seq = alignment[0]
-                aligned_tgt_seq = alignment[1]
-            elif ref_info.type == "dna":
-                alignment = self.nucleotide_aligner.align(ref_info.seq, tgt_info.seq)[0]
-                aligned_ref_seq = alignment[0]
-                aligned_tgt_seq = alignment[1]
-
-            elif ref_info.type == 'rna':
-                #Substitution Matrices for the pairwise aligners are all set up to use T rather than U
-                #So we must replace U with T before aligning and then shift it back
-                converted_ref_seq = ref_info.seq.replace("U","T")
-                converted_tgt_seq = tgt_info.seq.replace("U","T")
-
-                alignment = self.nucleotide_aligner.align(converted_ref_seq, converted_tgt_seq)[0]
-                #Change T's back to U's
-                aligned_ref_seq = alignment[0].replace("T","U")
-                aligned_tgt_seq = alignment[1].replace("T","U")
-            
-            #unknown chain type so just skip it
-            else:
-                print(f"[WARNING] skipping chain {ref_id} due to an unknown chain type")
+            if (ref_info.seq is None or tgt_info.seq is None):
                 continue
+
+            aligned_ref_seq, aligned_tgt_seq, alignment = self.align_seqs(ref_info.seq, tgt_info.seq, ref_info.type)
 
             potential_map = ChainMapper(ref_info.chain, ref_info.seq,aligned_ref_seq, tgt_info.chain, tgt_info.seq,aligned_tgt_seq, alignment, ref_info.type)
 
             percent_identity = potential_map.calc_percent_identity()
-            
-                
 
             if percent_identity < threshold:
                 continue
@@ -350,20 +385,6 @@ class StructureMapper:
                 self.matched_tgt_chains.add(tgt_id)
                 print(f"Matched {ref_id} → {tgt_id} with score {scores[(ref_id, tgt_id)]:.4f}")
 
-    def map_chains_explicit(self, explicit_chain_mapping):
-        for ref_chain_id, (tgt_chain_id, type)in explicit_chain_mapping.items():
-            ref_chain = self.ref_structure[0][ref_chain_id]
-            tgt_chain = self.tgt_structure[0][tgt_chain_id]
-
-            self.matched_ref_chains.add(ref_chain_id)
-            self.matched_tgt_chains.add(tgt_chain_id)
-
-            ref_seq = extract_seq_from_chain(ref_chain)
-            tgt_seq = extract_seq_from_chain(tgt_chain)
-
-            alignment = self.aligner.align(ref_seq, tgt_seq)[0]
-
-            self.chain_mappings[ref_chain_id] = ChainMapper(ref_chain, ref_seq, tgt_chain, tgt_seq, alignment, type)
 
     def calc_matrices (self, selected_chains=None):
         """
@@ -456,12 +477,9 @@ class EnsembleMapper:
         self.res_id_mappings = {} # Structure Name -> (ref(ChainID, ResID) -> tgt(ChainID, ResID))
         self.coords_targets_dict= {} # Structure Name -> aligned_tgt_coords
     
-    def add_structure(self, tgt_structure_name, tgt_structure, threshold, explicit_mapping=None):
-        structure_mapping = StructureMapper(self.ref_structure, tgt_structure, self.protein_aligner, self.nucleotide_aligner)
-        if explicit_mapping:
-            structure_mapping.map_chains_explicit(explicit_mapping)
-        else:
-            structure_mapping.map_chains(threshold)
+    def add_structure(self, tgt_structure_name, tgt_structure, threshold, explicit_mapping):
+        structure_mapping = StructureMapper(self.ref_structure, tgt_structure, self.protein_aligner, self.nucleotide_aligner, explicit_mapping)
+        structure_mapping.map_chains(threshold)
         self.structure_mappings[tgt_structure_name] = structure_mapping
 
     def get_common_ref_residues(self, selected_chains):
@@ -654,7 +672,7 @@ class EnsembleMapper:
 
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):
     """
-    Writes a filtered structure which includes either only the chains with an associted match, or only the residues with an associated match between tgt and reference
+    Writes a filtered structure which includes either only the chains with an associated match, or only the residues with an associated match between tgt and reference
     """
 
     #Store new writes
@@ -686,7 +704,7 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
     io.save(io_buffer)
     return io_buffer.getvalue()  # return CIF string
 
-def filter_and_write_aligned_maps(ref_cif, tgt_cif, identity_threshold=95.0):
+def filter_and_write_aligned_maps(ref_cif, tgt_cif, protein_aligner, nucleotide_aligner, identity_threshold=95.0):
     """
     Filter aligned models, and write out new models which include only matched residues as well as models which include only matched chains 
     """
@@ -694,7 +712,7 @@ def filter_and_write_aligned_maps(ref_cif, tgt_cif, identity_threshold=95.0):
     ref_structure = parser.get_structure("ref", ref_cif)
     tgt_structure = parser.get_structure("tgt", tgt_cif)
 
-    mapper = StructureMapper(ref_structure, tgt_structure)
+    mapper = StructureMapper(ref_structure, tgt_structure, protein_aligner, nucleotide_aligner)
     mapper.map_chains(threshold=identity_threshold)
 
     matched_ref_residues = set()

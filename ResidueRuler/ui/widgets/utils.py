@@ -144,8 +144,6 @@ def load_structures_if_new(cif_files, name_key_prefix, struct_key_prefix):
 def chain_mapping_input(ref_chains, tgt_chains, default=None, key="chain_mapping"):
     """
     Editable table for mapping reference → target chains.
-    - Blank entries are ignored.
-    - if all entries blank returns None (auto mapping mode).
     """
     st.caption("Map reference chains → target chains (leave all blank for auto mapping)")
 
@@ -166,31 +164,27 @@ def chain_mapping_input(ref_chains, tgt_chains, default=None, key="chain_mapping
                 
                 "Target Chain": st.column_config.SelectboxColumn(
                     "Target Chain",
-                    options=[""] + list(tgt_chains),  # allow blank
+                    options=[None] + list(tgt_chains),  # allow blank
                     required=False,
                 ),
 
                 "Chain Type": st.column_config.SelectboxColumn(
                     "Chain Type",
-                    options=[""] + ["protein", "dna", "rna"]
+                    options=[None] + ["protein", "dna", "rna"]
                 ),
             },
             use_container_width=True,
             hide_index=True,
         )
 
-        # Convert to dict, skipping blanks
+        # Convert to dict
         mapping = {
-            ref: (tgt, type) 
-            for ref, tgt, type in zip(edited_df["Reference Chain"], edited_df["Target Chain"], edited_df['Chain Type'])
-            if tgt  # only keep non-blank
+            ref: (
+                None if pd.isna(tgt) or tgt == "" else tgt,
+                None if pd.isna(chain_type) or chain_type == "" else chain_type,
+                ) 
+            for ref, tgt, chain_type in zip(edited_df["Reference Chain"], edited_df["Target Chain"], edited_df['Chain Type'])
         }
-
-        # If user left everything blank → return None (auto mode)
-        if not mapping:
-            st.info("No explicit mapping specified → auto mapping will be used.")
-            return None
-
         return mapping
 
 

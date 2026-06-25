@@ -46,6 +46,7 @@ def show_compare_tab():
     if ref_structure and tgt_structures:
         ref_chains = [ref_chain.id for ref_chain in ref_structure[0].get_chains()]
         chain_mappings = get_chain_mappings_for_targets(tgt_structures,ref_chains, key="compare_mappings")
+        print(chain_mappings)
 
     st.session_state.setdefault("mapper", None)
     protein_aligner, nucleotide_aligner = full_aligner_ui(key="compare")
