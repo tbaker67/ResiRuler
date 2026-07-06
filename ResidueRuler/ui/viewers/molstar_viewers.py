@@ -31,7 +31,7 @@ def create_distance_shift_builder(
     
     return builder
 
-def write_movement_annotations(df, cmap, vmin, vmax, ref=True):
+def write_displacement_annotations(df, cmap, vmin, vmax, ref=True):
     """Generate residue color annotations for Mol* viewer."""
     annotations = []
     df = df.dropna(subset=["Coord1", "Coord2", "Distance"])

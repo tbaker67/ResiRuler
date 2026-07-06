@@ -64,7 +64,7 @@ def draw_links_pymol(df, view, color_mode, **kwargs):
     view.zoomTo()
     return view
 
-def draw_movement_shift_pymol(df, view, cmap=plt.cm.get_cmap('plasma')):
+def draw_displacement_shift_pymol(df, view, cmap=plt.cm.get_cmap('plasma')):
     df = df.dropna(subset=['ChainID_Resnum1', 'Distance'])
 
     vmin, vmax = df['Distance'].min(), df['Distance'].max()
@@ -90,7 +90,7 @@ def draw_movement_shift_pymol(df, view, cmap=plt.cm.get_cmap('plasma')):
     return view
 
 
-def draw_movement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5, cmap = plt.cm.get_cmap('plasma')):
+def draw_displacement_vectors_py3dmol(df, view, radius=0.3, head_radius=0.5, cmap = plt.cm.get_cmap('plasma')):
     """
     Draws colored vectors and heads from Coord1 to Coord2, colored by Distance.
     """

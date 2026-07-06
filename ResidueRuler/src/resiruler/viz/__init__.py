@@ -12,7 +12,7 @@ from .export_visualizations import (
     get_color_gradient,
     generate_chimera_link_script,
     generate_arrow_dicts,
-    generate_multiple_movement_scripts,
+    generate_multiple_displacement_scripts,
 )
 
 __all__ = [
@@ -26,5 +26,5 @@ __all__ = [
     'get_color_gradient',
     'generate_chimera_link_script',
     'generate_arrow_dicts',
-    'generate_multiple_movement_scripts',
+    'generate_multiple_displacement_scripts',
 ]

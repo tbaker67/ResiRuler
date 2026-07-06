@@ -637,12 +637,12 @@ class EnsembleMapper:
            rmsds[structure_name] = rmsd
         return rmsds
 
-    def calc_movement_dfs(self):
+    def calc_displacement_dfs(self):
         """
-        Calculate movement dfs for each structure mapped to the reference, by taking the common residues and finding their difference with corresponding 
+        Calculate displacement dfs for each structure mapped to the reference, by taking the common residues and finding their difference with corresponding 
         residues in the reference 
         """
-        movement_dfs = {}
+        displacement_dfs = {}
         ref_coords = self.coords_ref
 
         for structure_name, tgt_coords in self.coords_targets_dict.items():
@@ -665,9 +665,9 @@ class EnsembleMapper:
             "Distance": distances
             })
 
-            movement_dfs[structure_name] = df
+            displacement_dfs[structure_name] = df
             
-        return movement_dfs
+        return displacement_dfs
 
 
 def write_filtered_structure(structure, matched_chains=None, matched_residues=None):

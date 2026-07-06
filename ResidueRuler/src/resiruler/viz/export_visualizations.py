@@ -87,18 +87,18 @@ def generate_pml_palette_string(palette):
     return palette_string
 
 
-def generate_multiple_movement_scripts(movement_dfs, ref_name, palette, positions):
+def generate_multiple_displacement_scripts(displacement_dfs, ref_name, palette, positions):
 
     full_def_attr = io.StringIO()
     full_cxc_script = io.StringIO()
     full_pml_script = io.StringIO()
 
     ids = 1
-    for tgt_structure_name, movement_df in movement_dfs.items():
+    for tgt_structure_name, displacement_df in displacement_dfs.items():
         #Assumes that the names are simply the cif files without the extension
         ref_cif_name = ref_name + ".cif"
         tgt_cif_name = tgt_structure_name + ".cif"
-        def_attr, cxc_script, pml_script = generate_shift_scripts(movement_df, ref_cif_name, ref_name, tgt_cif_name, tgt_structure_name, ids)
+        def_attr, cxc_script, pml_script = generate_shift_scripts(displacement_df, ref_cif_name, ref_name, tgt_cif_name, tgt_structure_name, ids)
 
         full_def_attr.write(def_attr + '\n')
         full_cxc_script.write(cxc_script + '\n')
@@ -159,9 +159,9 @@ def generate_shift_scripts(df, cif1_name, structure_name1, cif2_name, structure_
    
     return defattr.getvalue(), cxc.getvalue(), pml.getvalue()
 
-def chimera_movement_vectors_from_csv(df, output_path=None, fidelity=1, cmap=None, norm=None):
+def chimera_displacement_vectors_from_csv(df, output_path=None, fidelity=1, cmap=None, norm=None):
     """
-    Export movement vectors to ChimeraX BILD format, with optional fidelity subsampling.
+    Export displacement vectors to ChimeraX BILD format, with optional fidelity subsampling.
     """
     df = df.iloc[::fidelity]
     bild_string = generate_bild_string(df, cmap, norm)
@@ -172,12 +172,12 @@ def chimera_movement_vectors_from_csv(df, output_path=None, fidelity=1, cmap=Non
 
     return bild_string
 
-def generate_arrow_dicts(movement_dfs, cmap, vmin, vmax, fidelity=1):
+def generate_arrow_dicts(displacement_dfs, cmap, vmin, vmax, fidelity=1):
     bild_output_dict = {}
     pml_output_dict = {}
     norm = mcolors.Normalize(vmin, vmax)
 
-    for name, df in movement_dfs.items():
+    for name, df in displacement_dfs.items():
         # Group by reference chain (ChainID_Resnum1)
         if 'ChainID_Resnum1' in df.columns:
             df_grouped = df.groupby(df['ChainID_Resnum1'].apply(lambda x: str(x).split('-')[0]))
@@ -229,7 +229,7 @@ def generate_bild_string(df, cmap=None, norm=None, fidelity=1):
 
 def generate_pml_arrows(df, cmap, norm, arrow_radius=0.2, arrow_head_ratio=0.2):
     """
-    Creates pymol arrow visualization from a movement datatable.
+    Creates pymol arrow visualization from a displacement datatable.
     arrow_head_ratio specifies the percentage of the arrow taken up by the arrowhead.
     """
 
