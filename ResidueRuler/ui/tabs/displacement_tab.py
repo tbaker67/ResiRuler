@@ -70,7 +70,7 @@ def show_displacement_tab():
 
     
     if st.session_state.displacement_dfs is not None:
-        selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare", key_prefix="")
+        selected_chains = chain_selector_ui(ref_structure, "Select Chains in Reference to Compare", key_prefix="")
         filtered_displacement_dfs = {
             struct_name: filter_df_by_chains(df, selected_chains)
             for struct_name, df in st.session_state.displacement_dfs.items()
@@ -94,7 +94,7 @@ def show_displacement_tab():
         }
 
         selected_structure = st.selectbox(
-            "Select structure for visualization",
+            "Select Structure For Visualization",
             options=list(structure_choices.keys())
         )
 

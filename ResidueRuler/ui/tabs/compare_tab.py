@@ -35,7 +35,7 @@ def add_svg_download(fig, filename):
     )
 
 def show_compare_tab():
-    st.header("Compare Distances within two structures")
+    st.header("Compare Distances Within Two Structures")
 
     ref_cif = st.file_uploader("Upload Aligned Reference CIF", type=["cif"], key="reference1")
     tgt_cifs = st.file_uploader("Upload Aligned Target CIFs", type=["cif"], key="tgts", accept_multiple_files=True)
@@ -59,7 +59,7 @@ def show_compare_tab():
     if st.session_state.mapper is not None:
         show_alignments(st.session_state.mapper, key="compare_alignment")
 
-    selected_chains = chain_selector_ui(ref_structure, "Select Chains in reference to compare", key_prefix="compare")
+    selected_chains = chain_selector_ui(ref_structure, "Select Chains in Reference to Compare", key_prefix="compare")
 
     protein_mode, nucleic_mode = get_measurement_mode(key="compare_measurement_mode")
 
@@ -81,14 +81,14 @@ def show_compare_tab():
 
         target_names = list(st.session_state.tgt_dms_dict.keys())
         selected_target = st.selectbox(
-            "Select target structure to display",
+            "Select Target Structure to Display",
             target_names,
             key="selected_target_display"
         )
 
         residue_count = len(st.session_state.ref_dm.index_map)
         if residue_count > 2000:
-            st.info(f"Large structure detected ({residue_count:,} residues). Chain-pair view recommended for better performance.")
+            st.info(f"Large structure detected ({residue_count:,} residues). Chain-pair View Fecommended for Better Performance.")
         
         display_mode = st.radio(
             "Display Mode",
@@ -115,7 +115,7 @@ def show_compare_tab():
             add_svg_download(st.session_state.ref_fig, "full_ref_fig_map.svg")
 
             st.plotly_chart(st.session_state.tgt_figs_dict[selected_target], use_container_width=False)
-            add_svg_download(st.session_state.tgt_fig, "full_tgt_fig_map.svg")
+            add_svg_download(st.session_state.tgt_figs_dict[selected_target], "full_tgt_fig_map.svg")
             
             if enable_threshold and contact_threshold is not None:
                 compare_dm = st.session_state.compare_dms_dict[selected_target]
@@ -150,7 +150,7 @@ def show_compare_tab():
                 st.plotly_chart(st.session_state.compare_figs_dict[selected_target], use_container_width=False)
                 add_svg_download(st.session_state.compare_figs_dict[selected_target], "compare_fig_map.svg")
             
-            st.caption("To refresh plots with new threshold settings, click 'Compare' again.")
+            st.caption("To Refresh Plots With New Threshold Settings, click 'Compare' again.")
         else:
             display_chain_pair_selector(
                 st.session_state.ref_dm,
@@ -175,7 +175,7 @@ def show_compare_tab():
         csv_filepath = os.path.join(output_dir, csv_filename)
         
         if st.button("Export Full Comparison to CSV", key="export_csv"):
-            with st.spinner(f"Exporting {total_pairs:,} pairs to CSV (streaming to avoid memory issues)..."):
+            with st.spinner(f"Exporting {total_pairs:,} pairs to CSV"):
                 rows_written = compare_dm.export_to_csv_streaming(csv_filepath)
                 st.success(f"Exported {rows_written:,} rows to: `{csv_filepath}`")
                 

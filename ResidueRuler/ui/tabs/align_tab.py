@@ -61,7 +61,7 @@ def show_align_tab():
 
     if st.button("Run US-align"):
         if not all([struct1, struct2]):
-            st.error("Please upload both structure files.")
+            st.error("Please Upload Both Structure Files.")
             return
 
         path1 = save_temp_file(struct1)
