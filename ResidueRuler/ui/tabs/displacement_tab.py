@@ -14,7 +14,7 @@ from ui.viewers.molstar_viewers import (
     create_distance_shift_builder,
     write_displacement_annotations,
 )
-from ui.viewers.pymol_viewers import plot_vectors_plotly
+from ui.viewers.plotly_viewer import plot_vectors_plotly
 from ui.widgets.color_mapping_utils import (
     build_gradient_cmap,
     gradient_palette_picker,
