@@ -58,11 +58,20 @@ Start by uploading files:
 
 ![Align Page 1](ResidueRuler/images/align/Align_Page1.png)
 
-Preview the alignment:
+You can then select chains which you want the alignment program to consider when determining the best alignment.
+
 ![Align Page 2](ResidueRuler/images/align/Align_Page2.png)
 
-Optionally "clean" the alignment to remove unmatched chains or residues. Download cleaned CIF files for future use.
+Shows a preview of the alignment, which can be downloaded by pressing the button.
+
 ![Align Page 3](ResidueRuler/images/align/Align_Page3.png)
+
+
+Optionally "clean" the alignment to remove unmatched chains or residues. 
+The user is also provided with options for adjusting parameters associated with determining matched chains and residues
+
+
+![Align Page 4](ResidueRuler/images/align/Align_Page4.png)
 
 ---
 
@@ -73,19 +82,29 @@ Compare inter-residue distances between two structures.
 - Auto-matches chains between structures, or allows explicit mapping.
 - For best results, supply aligned structures from the **Align** tab or other alignment software.
 
+
+Start by uploading the structure(s) of interest
+
 ![Pairwise Distance Difference Tab 1](ResidueRuler/images/compare/Compare_Page1.png)
 
-Specify which chains to compare and set a minimum percent identity threshold for chain matching.
+
+Next, correspondence between chains in the reference and comparison/target structures can either be explicitly defined by the user.
+Any chains that are not matched by the user, will enter the automatic chain mapping algorithm.
+
 ![Pairwise Distance Difference Tab 2](ResidueRuler/images/compare/Compare_Page2.png)
 
-Produces contact maps for both structures and a distance difference map (subtraction of the two contact maps).
+Distance thresholds for what actually gets displayed in the output can be specified by the user.
+
+
 ![Pairwise Distance Difference Tab 3](ResidueRuler/images/compare/Compare_Page3.png)
+
+The user will then select the chains they would like to display in the plots, and a panel consisting of contact and distance difference maps as well as a table of the associated information will be displayed. All plots are fully interactive and can be made to fit the screen as well as be downloaded as their SVG image.
+![Pairwise Distance Difference Tab 4](ResidueRuler/images/compare/Compare_Page4.png)
 
 ---
 
 ## The "Per-Residue Displacement" Tab
 
----
 
 Calculate how each residue moves between two aligned conformations via calculting the distance between corresponding residues in the two structures.
 
