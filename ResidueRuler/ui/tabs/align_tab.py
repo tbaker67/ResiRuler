@@ -9,7 +9,7 @@ from Bio.PDB import MMCIFIO, MMCIFParser
 
 from src.resiruler.core.auto_alignment import filter_and_write_aligned_maps
 from src.resiruler.wrappers.usalign_wrapper import run_usalign_matrix_only
-from ui.widgets.utils import save_temp_file, full_aligner_ui, get_threshold
+from ui.widgets.utils import save_temp_file, full_aligner_ui, get_threshold, select_chains_for_alignment_ui
 
 def apply_transform(structure, rotation, translation):
     """
@@ -35,13 +35,13 @@ def apply_transform(structure, rotation, translation):
 def start_pymol_viewer(reference_cif_str, aligned_cif_str):
     view = py3Dmol.view(width=800, height=600)
 
-    # Add reference structure (model 0) - blue
+    # Add reference structure (model 0) - yellow
     view.addModel(reference_cif_str, 'cif')
-    view.setStyle({'model': 0}, {'cartoon': {'color': 'blue'}})
+    view.setStyle({'model': 0}, {'cartoon': {'color': 'yellow'}})
 
-    # Add aligned structure (model 1) - semi-transparent red
+    # Add aligned structure (model 1) - semi-transparent blue
     view.addModel(aligned_cif_str, 'cif')
-    view.setStyle({'model': 1}, {'cartoon': {'color': 'red'}})
+    view.setStyle({'model': 1}, {'cartoon': {'color': 'blue'}})
 
     view.zoomTo()
     return view
@@ -49,27 +49,36 @@ def start_pymol_viewer(reference_cif_str, aligned_cif_str):
 def show_align_tab():
     st.header("Run US-align Structure Alignment")
 
-    st.markdown("Upload two structure files (.pdb or .cif) to run US-align and get the rotation & translation matrices.")
+    st.markdown("Upload two structure files (.cif) to run US-align and get the rotation & translation matrices.")
 
-    struct1 = st.file_uploader("Upload Reference Structure (Structure 1)", type=["pdb", "cif"])
-    struct2 = st.file_uploader("Upload Structure to Align (Structure 2)", type=["pdb", "cif"])
+    struct1 = st.file_uploader("Upload Reference Structure (Structure 1)", type=["cif"])
+    struct2 = st.file_uploader("Upload Structure to Align to Reference (Structure 2)", type=["cif"])
 
     st.session_state.setdefault("usalign_R", None)
     st.session_state.setdefault("usalign_t", None)
     st.session_state.setdefault("aligned_cif", None)
     st.session_state.setdefault("ref_cif", None)
 
+    if struct1 and struct2:
+
+        reference_structure_path = save_temp_file(struct1)
+        structure_to_align_path = save_temp_file(struct2)
+
+    
+        reference_chains, chains_to_align = select_chains_for_alignment_ui(reference_structure_path,
+                                                                        structure_to_align_path)
+        reference_chains_str = ",".join(reference_chains)
+        chains_to_align_str = ",".join(chains_to_align)
+
+
     if st.button("Run US-align"):
         if not all([struct1, struct2]):
             st.error("Please Upload Both Structure Files.")
             return
 
-        path1 = save_temp_file(struct1)
-        path2 = save_temp_file(struct2)
-
         try:
             # Align structure 2 to structure 1 (mobile -> ref)
-            R, t = run_usalign_matrix_only(str(path2), str(path1))
+            R, t = run_usalign_matrix_only(str(structure_to_align_path), str(reference_structure_path), reference_chains_str, chains_to_align_str)
 
             st.session_state.usalign_R = R
             st.session_state.usalign_t = t
@@ -80,8 +89,8 @@ def show_align_tab():
 
             # Load structure 2 and apply transform
             parser = MMCIFParser(QUIET=True)
-            structure_id = os.path.basename(path2).split('.')[0]
-            mobile_structure = parser.get_structure(structure_id, str(path2))
+            structure_id = os.path.basename(structure_to_align_path).split('.')[0]
+            mobile_structure = parser.get_structure(structure_id, str(structure_to_align_path))
             aligned_structure = apply_transform(mobile_structure, R, t)
 
             # Write aligned structure to string buffer
@@ -167,8 +176,3 @@ def show_align_tab():
 
                 except Exception as e:
                     st.error(f"Filtering failed: {e}")
-
-
-    
-        
-

@@ -11,6 +11,7 @@ import pandas as pd
 import streamlit as st
 from Bio.Align import PairwiseAligner, substitution_matrices
 from Bio.PDB.mmcifio import MMCIFIO
+from Bio.PDB import MMCIFParser
 
 from src.resiruler.core.auto_alignment import EnsembleMapper, StructureMapper
 from src.resiruler.core.structure_parsing import extract_res_from_chain, load_structure
@@ -634,3 +635,38 @@ def display_chain_pair_selector(ref_dm, tgt_dm, compare_dm, selected_target,
                     
             except ValueError as e:
                 st.error(f"Could not display {pair_label}: {e}")
+
+def get_available_chains(structure_path):
+    """
+    Gets available chains from a structure path.
+    """
+    parser = MMCIFParser(QUIET=True)
+    structure_id = os.path.splitext(os.path.basename(structure_path))[0]
+    structure = parser.get_structure(structure_id, structure_path)
+    return sorted([chain.id for model in structure for chain in model])
+
+def select_chains_for_alignment_ui(structure_path_1, structure_path_2):
+    available_chains_1 = sorted(get_available_chains(structure_path_1))
+    available_chains_2 = sorted(get_available_chains(structure_path_2))
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**Structure 1**")
+        selected_chains_1 = st.multiselect(
+            "Chains to Align",
+            available_chains_1,
+            default=available_chains_1,
+            key="alignment_chains_1",
+        )
+
+    with col2:
+        st.markdown("**Structure 2**")
+        selected_chains_2 = st.multiselect(
+            "Chains to Align",
+            available_chains_2,
+            default=available_chains_2,
+            key="alignment_chains_2",
+        )
+
+    return selected_chains_1, selected_chains_2
