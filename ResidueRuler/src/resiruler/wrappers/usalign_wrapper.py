@@ -4,9 +4,10 @@ import shutil
 import os
 
 def find_usalign_executable():
-    '''
-    Assuming usalign installed via conda install -c bioconda usalign
-    '''
+    """
+    Finds the usalign executable.
+    Assumes usalign installed via conda install -c bioconda usalign.
+    """
     # Try to find USalign in current PATH
     usalign_path = shutil.which("USalign")
     if usalign_path:
@@ -19,12 +20,15 @@ def find_usalign_executable():
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
 
-    # Could add other fallback logic here if needed
-
     raise FileNotFoundError("USalign executable not found in PATH or CONDA_PREFIX/bin.")
 
 
-def run_usalign_matrix_only(structure_to_align_path, reference_structure_path):
+def run_usalign_matrix_only(structure_to_align_path, reference_structure_path,
+                            chain1_str=None, chain2_str=None,):
+    """
+    Run US-align and return the rotation matrix to superimpose the structure to align 
+    onto the reference.
+    """
     usalign_binary = find_usalign_executable()
 
     cmd = [
@@ -37,9 +41,16 @@ def run_usalign_matrix_only(structure_to_align_path, reference_structure_path):
 
     ]
 
+    if chain1_str:
+        cmd += ["-chain1", chain1_str]
+    if chain2_str:
+        cmd += ["-chain2", chain2_str]
+    print(cmd)
+
     # Run US-align
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if result.returncode != 0:
+        print(result.stderr)
         raise RuntimeError(f"USalign failed with error:\n{result.stderr}")
 
     R, t = parse_matrix_from_stdout(result.stdout)
@@ -55,9 +66,15 @@ def parse_matrix_from_stdout(stdout):
         if "rotation matrix" in line.lower():
             found_header = True
             continue
+
         if found_header:
-            if line.strip() and line.strip()[0] in ("0", "1", "2"):
-                matrix_lines.append(line.strip())
+            stripped = line.strip()
+            if not stripped:
+                continue
+            parts = stripped.split()
+
+            if parts and parts[0] in ("0", "1", "2"):
+                matrix_lines.append(parts)
             if len(matrix_lines) == 3:
                 break
 
@@ -66,8 +83,7 @@ def parse_matrix_from_stdout(stdout):
 
     R = []
     t = []
-    for line in matrix_lines:
-        parts = line.split()
+    for parts in matrix_lines:
         t.append(float(parts[1]))
         R.append([float(parts[2]), float(parts[3]), float(parts[4])])
 
