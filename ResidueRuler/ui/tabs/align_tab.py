@@ -9,7 +9,7 @@ from Bio.PDB import MMCIFIO, MMCIFParser
 
 from src.resiruler.core.auto_alignment import filter_and_write_aligned_maps
 from src.resiruler.wrappers.usalign_wrapper import run_usalign_matrix_only
-from ui.widgets.utils import save_temp_file, full_aligner_ui, get_threshold, select_chains_for_alignment_ui
+from ui.widgets.utils import save_temp_file, full_aligner_ui, get_threshold, select_chains_for_alignment_ui, create_downloadable_zip
 
 def apply_transform(structure, rotation, translation):
     """
@@ -37,11 +37,11 @@ def start_pymol_viewer(reference_cif_str, aligned_cif_str):
 
     # Add reference structure (model 0) - yellow
     view.addModel(reference_cif_str, 'cif')
-    view.setStyle({'model': 0}, {'cartoon': {'color': 'yellow'}})
+    view.setStyle({'model': 0}, {'cartoon': {'color': "#115A99"}})
 
     # Add aligned structure (model 1) - semi-transparent blue
     view.addModel(aligned_cif_str, 'cif')
-    view.setStyle({'model': 1}, {'cartoon': {'color': 'blue'}})
+    view.setStyle({'model': 1}, {'cartoon': {'color': '#FFC107'}})
 
     view.zoomTo()
     return view
@@ -109,7 +109,7 @@ def show_align_tab():
 
     if st.session_state.get("usalign_R") is not None and st.session_state.get("aligned_cif") is not None:
         # Show viewer with both reference and aligned structures
-        st.subheader("3D Viewer: Reference (blue) vs Aligned (red)")
+        st.subheader("3D Viewer: Reference (Blue) vs Aligned (Yellow)")
 
         viewer = start_pymol_viewer(st.session_state.ref_cif, st.session_state.aligned_cif)
         # Embed the viewer's javascript/HTML into Streamlit
@@ -126,53 +126,50 @@ def show_align_tab():
             file_name=cif_filename,
             mime="chemical/x-mm-cif"
         )
-    
-    protein_aligner, nucleotide_aligner = full_aligner_ui(key="align")
-    pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0","align_pct_id")
+        protein_aligner, nucleotide_aligner = full_aligner_ui(key="align")
+        pct_id_threshold = get_threshold("Set a Minimum Percent Identity Threshold for Matching Chains Together", "95.0","align_pct_id")
 
-    if st.button("Clean Alignment To Show Only Matched Residues/Chains"):
-        if not all([struct1, struct2]):
-            st.error("Please upload both structure files.")
-        else:
-            with st.spinner("Filtering matched residues and chains..."):
-                try:
-                    # Use raw file streams
-                    ref_cif_stream = io.StringIO(st.session_state.ref_cif)
-                    tgt_cif_stream = io.StringIO(st.session_state.aligned_cif)
 
-                    ref_chain_cif, ref_res_cif, tgt_chain_cif, tgt_res_cif = filter_and_write_aligned_maps(
-                        ref_cif_stream, tgt_cif_stream, protein_aligner, nucleotide_aligner, identity_threshold=pct_id_threshold
-                    )
+        if st.button("Clean Alignment To Show Only Matched Residues/Chains"):
+            if not all([struct1, struct2]):
+                st.error("Please upload both structure files.")
+            else:
+                with st.spinner("Filtering matched residues and chains..."):
+                    try:
+                        # Use raw file streams
+                        ref_cif_stream = io.StringIO(st.session_state.ref_cif)
+                        tgt_cif_stream = io.StringIO(st.session_state.aligned_cif)
 
-                    st.session_state["filtered_outputs"] = {
-                        "ref_chain": ref_chain_cif,
-                        "ref_res": ref_res_cif,
-                        "tgt_chain": tgt_chain_cif,
-                        "tgt_res": tgt_res_cif
-                    }
-
-                    st.success("Filtered structures generated!")
-
-                    st.subheader("Download Filtered Structures")
-
-                    for label, cif_str in st.session_state["filtered_outputs"].items():
-                        st.download_button(
-                            label=f"Download {label.replace('_', ' ').title()} CIF",
-                            data=cif_str,
-                            file_name=f"{label}.cif",
-                            mime="chemical/x-mm-cif"
+                        ref_chain_cif, ref_res_cif, tgt_chain_cif, tgt_res_cif = filter_and_write_aligned_maps(
+                            ref_cif_stream, tgt_cif_stream, protein_aligner, nucleotide_aligner, identity_threshold=pct_id_threshold
                         )
 
-                    st.subheader("3D Viewer: Filtered Structures")
-                    viewer = py3Dmol.view(width=800, height=600)
-                    viewer.addModel(st.session_state["filtered_outputs"]["ref_res"], 'cif')
-                    viewer.setStyle({'model': 0}, {'cartoon': {'color': 'blue'}})
-                    viewer.addModel(st.session_state["filtered_outputs"]["tgt_res"], 'cif')
-                    viewer.setStyle({'model': 1}, {'cartoon': {'color': 'red'}})
-                    viewer.zoomTo()
+                        st.session_state["filtered_outputs"] = {
+                            "reference_chain_filtered": ref_chain_cif,
+                            "reference_residue_filtered": ref_res_cif,
+                            "comparison_chain_filtered": tgt_chain_cif,
+                            "comparison_residue_filtered": tgt_res_cif
+                        }
 
-                    html = viewer._make_html()
-                    st.components.v1.html(html, height=650)
+                        st.success("Filtered structures generated!")
+                        st.subheader("3D Viewer: Filtered Structures")
+                        viewer = start_pymol_viewer(st.session_state["filtered_outputs"]["reference_chain_filtered"]
+                                                    , st.session_state["filtered_outputs"]["comparison_chain_filtered"])
+                        html = viewer._make_html()
+                        st.components.v1.html(html, height=650)
+                        
+                        st.subheader("Download Filtered Structures")
+                        files_dict = {
+                            f"{label}.cif": cif_str
+                            for label, cif_str in st.session_state["filtered_outputs"].items()
+                        }
+                        zip_buffer = create_downloadable_zip(files_dict)
+                        st.download_button(
+                            label="Download All Filtered Structures (ZIP)",
+                            data=zip_buffer,
+                            file_name="filtered_structures.zip",
+                            mime="application/zip"
+)
 
-                except Exception as e:
-                    st.error(f"Filtering failed: {e}")
+                    except Exception as e:
+                        st.error(f"Filtering failed: {e}")

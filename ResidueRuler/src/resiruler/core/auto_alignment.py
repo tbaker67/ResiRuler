@@ -309,7 +309,7 @@ class StructureMapper:
             self.map_chains_explicit()
 
         for ref_id, tgt_id, ref_info, tgt_info in ref_collection.valid_pairs(tgt_collection):
-            if self.explicit_mapping[ref_id][0]:
+            if self.explicit_mapping and self.explicit_mapping[ref_id][0]:
               continue
 
             if (ref_info.seq is None or tgt_info.seq is None):
@@ -674,27 +674,21 @@ def write_filtered_structure(structure, matched_chains=None, matched_residues=No
     """
     Writes a filtered structure which includes either only the chains with an associated match, or only the residues with an associated match between tgt and reference
     """
-
-    #Store new writes
     new_structure = Structure.Structure(f"{structure.id}_filtered")
     new_model = Model.Model(0)
     new_structure.add(new_model)
 
     for chain in structure.get_chains():
-        #No match, or not looking for filtering chain
         if matched_chains is not None and chain.id not in matched_chains:
             continue
 
         new_chain = chain.__class__(chain.id)
         for res in chain.get_residues():
-            res_copy = res
             key = (chain.id, res.id)
-            #No residue match or not filtering residues
-            if matched_residues is None or key not in matched_residues:
+            # Only skip if we ARE filtering residues and this one isn't matched
+            if matched_residues is not None and key not in matched_residues:
                 continue
-            new_chain.add(res_copy)
-
-        #If we've got a chain add it the new structure
+            new_chain.add(res)  # reference reuse — safe here, avoids deepcopy cost
         if len(new_chain):
             new_model.add(new_chain)
 
@@ -712,7 +706,7 @@ def filter_and_write_aligned_maps(ref_cif, tgt_cif, protein_aligner, nucleotide_
     ref_structure = parser.get_structure("ref", ref_cif)
     tgt_structure = parser.get_structure("tgt", tgt_cif)
 
-    mapper = StructureMapper(ref_structure, tgt_structure, protein_aligner, nucleotide_aligner)
+    mapper = StructureMapper(ref_structure, tgt_structure, protein_aligner, nucleotide_aligner, explicit_mapping=None)
     mapper.map_chains(threshold=identity_threshold)
 
     matched_ref_residues = set()
@@ -723,9 +717,8 @@ def filter_and_write_aligned_maps(ref_cif, tgt_cif, protein_aligner, nucleotide_
     #Get matches residues and chains 
     for chain_id, cm in mapper.chain_mappings.items():
         for ref_res_id, tgt_res_id in cm.res_id_mapping.items():
-            matched_ref_residues.add((ref_res_id)) # (chainID, resID)
-            
-            matched_tgt_residues.add((tgt_res_id)) # (chainID, resID)
+            matched_ref_residues.add((cm.ref_chain.id, ref_res_id))  # (chainID, resID)
+            matched_tgt_residues.add((cm.tgt_chain.id, tgt_res_id))  # (chainID, resID)
 
         matched_ref_chains.add(cm.ref_chain.id)
         matched_tgt_chains.add(cm.tgt_chain.id)

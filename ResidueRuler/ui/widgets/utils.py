@@ -652,7 +652,7 @@ def select_chains_for_alignment_ui(structure_path_1, structure_path_2):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("**Structure 1**")
+        st.markdown("**Chains to Consider in Reference**")
         selected_chains_1 = st.multiselect(
             "Chains to Align",
             available_chains_1,
@@ -661,7 +661,7 @@ def select_chains_for_alignment_ui(structure_path_1, structure_path_2):
         )
 
     with col2:
-        st.markdown("**Structure 2**")
+        st.markdown("**Chains to Consider in Structure to Align**")
         selected_chains_2 = st.multiselect(
             "Chains to Align",
             available_chains_2,

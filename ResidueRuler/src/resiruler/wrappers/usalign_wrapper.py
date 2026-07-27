@@ -45,7 +45,6 @@ def run_usalign_matrix_only(structure_to_align_path, reference_structure_path,
         cmd += ["-chain1", chain1_str]
     if chain2_str:
         cmd += ["-chain2", chain2_str]
-    print(cmd)
 
     # Run US-align
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
