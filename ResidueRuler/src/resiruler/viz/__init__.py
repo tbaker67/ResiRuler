@@ -24,7 +24,6 @@ __all__ = [
     'plot_contacts_lost',
     'get_color_discrete',
     'get_color_gradient',
-    'generate_chimera_link_script',
     'generate_arrow_dicts',
     'generate_multiple_displacement_scripts',
 ]
