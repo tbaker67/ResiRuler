@@ -43,30 +43,6 @@ def get_color_gradient(distance, cmap, min_val, max_val):
     r, g, b = (int(255 * c) for c in rgba[:3])
     return f"#{r:02x}{g:02x}{b:02x}"
 
-
-def generate_chimera_link_script(df, chains = None, color_mode="discrete", **kwargs):
-    output = io.StringIO()
-    for _, row in df.iterrows():
-        coord1, coord2, dist = row['Coord1'], row['Coord2'], row['Distance']
-        if any(pd.isna([coord1, coord2, dist])):
-            continue
-        color = None
-        if color_mode == "discrete":
-            color = get_color_discrete(dist, **kwargs)
-        else:
-            color = get_color_gradient(dist, **kwargs)
-        output.write(
-            f"shape cylinder radius 1 fromPoint {coord1[0]},{coord1[1]},{coord1[2]} "
-            f"toPoint {coord2[0]},{coord2[1]},{coord2[2]} color {color}\n"
-        )
-
-    if chains:
-        output.write("hide\n")
-        for chain in chains:
-            output.write(f"cartoon /{chain}\n")
-
-    return output.getvalue()
-
 def generate_chimera_coloring_palette_string(palette, positions):
 
     palette_string = ""
