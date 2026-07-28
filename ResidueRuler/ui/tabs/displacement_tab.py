@@ -2,7 +2,10 @@
 import json
 import os
 from pathlib import Path
-from src.resiruler.viz.export_visualizations import save_bild_files_and_generate_chimerax_script
+from src.resiruler.viz.export_visualizations import (
+    save_bild_files_and_generate_chimerax_script,
+    save_pml_files_and_generate_pymol_script,
+)
 import tempfile
 import streamlit as st
 
@@ -142,7 +145,7 @@ def show_displacement_tab():
             )
 
         
-        st.subheader("displacement Data")
+        st.subheader("Displacement Data")
         st.dataframe(filtered_displacement_dfs[selected_structure])
 
 
@@ -174,6 +177,9 @@ def show_displacement_tab():
 
         chimerax_script_content = save_bild_files_and_generate_chimerax_script(bild_dict)
         bild_dict["open_all_bilds.cxc"] = chimerax_script_content
+
+        pymol_arrows_script_content = save_pml_files_and_generate_pymol_script(pml_arrows_dict)
+        pml_arrows_dict["run_all_arrows.pml"] = pymol_arrows_script_content
         # --- models (CIFs) ---
         models_dict = {}
         if ref_cif:
