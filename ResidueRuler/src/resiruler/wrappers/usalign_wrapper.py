@@ -1,7 +1,9 @@
-import subprocess
-import numpy as np
-import shutil
 import os
+import shutil
+import subprocess
+
+import numpy as np
+
 
 def find_usalign_executable():
     """
@@ -23,10 +25,14 @@ def find_usalign_executable():
     raise FileNotFoundError("USalign executable not found in PATH or CONDA_PREFIX/bin.")
 
 
-def run_usalign_matrix_only(structure_to_align_path, reference_structure_path,
-                            chain1_str=None, chain2_str=None,):
+def run_usalign_matrix_only(
+    structure_to_align_path,
+    reference_structure_path,
+    chain1_str=None,
+    chain2_str=None,
+):
     """
-    Run US-align and return the rotation matrix to superimpose the structure to align 
+    Run US-align and return the rotation matrix to superimpose the structure to align
     onto the reference.
     """
     usalign_binary = find_usalign_executable()
@@ -35,10 +41,12 @@ def run_usalign_matrix_only(structure_to_align_path, reference_structure_path,
         usalign_binary,
         structure_to_align_path,
         reference_structure_path,
-        "-m", "-",
-        "-mm", "1",
-        "-ter", "0"
-
+        "-m",
+        "-",
+        "-mm",
+        "1",
+        "-ter",
+        "0",
     ]
 
     if chain1_str:
@@ -47,7 +55,7 @@ def run_usalign_matrix_only(structure_to_align_path, reference_structure_path,
         cmd += ["-chain2", chain2_str]
 
     # Run US-align
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(result.stderr)
         raise RuntimeError(f"USalign failed with error:\n{result.stderr}")

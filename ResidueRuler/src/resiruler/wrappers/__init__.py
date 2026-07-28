@@ -1,7 +1,7 @@
 # External tool wrappers
-from .usalign_wrapper import run_usalign_matrix_only, find_usalign_executable
+from .usalign_wrapper import find_usalign_executable, run_usalign_matrix_only
 
 __all__ = [
-    'run_usalign_matrix_only',
-    'find_usalign_executable',
+    "find_usalign_executable",
+    "run_usalign_matrix_only",
 ]

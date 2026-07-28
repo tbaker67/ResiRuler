@@ -1,35 +1,33 @@
 """Mol* viewer components for 3D structure visualization."""
+
 import matplotlib.colors as mcolors
 import molviewspec as mvs
 
-def create_distance_shift_builder(
-    
-) :
+
+def create_distance_shift_builder():
     """
     Create a Mol* builder for visualizing distance shifts between two structures.
-    
+
     Args:
         ref_cif_data: CIF content of the reference structure (string).
         tgt_cif_data: CIF content of the target structure (string).
         ref_annotations_json: JSON string with reference residue colors.
         tgt_annotations_json: JSON string with target residue colors.
-    
+
     Returns:
         mvs.Builder object ready for .molstar_streamlit() rendering.
     """
     builder = mvs.create_builder()
-    
+
     # --- Reference structure ---
     structure = (
-        builder.download(url='local.cif')
-        .parse(format='mmcif')
-        .model_structure()
+        builder.download(url="local.cif").parse(format="mmcif").model_structure()
     )
-    cartoon = structure.component(selector='polymer').representation(type='cartoon')
-    cartoon.color_from_uri(uri='annotations.json', format='json', schema='all_atomic')
-    
-    
+    cartoon = structure.component(selector="polymer").representation(type="cartoon")
+    cartoon.color_from_uri(uri="annotations.json", format="json", schema="all_atomic")
+
     return builder
+
 
 def write_displacement_annotations(df, cmap, vmin, vmax, ref=True):
     """Generate residue color annotations for Mol* viewer."""

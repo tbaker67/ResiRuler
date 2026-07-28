@@ -1,4 +1,5 @@
 """Color mapping utilities for gradient and discrete palette UI components."""
+
 import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
@@ -12,9 +13,9 @@ def get_coloring_values(min=0.0, max=100.0, key=""):
 
     col1, col2 = st.columns(2)
     with col1:
-        min_val = st.number_input("Min value", value=min, key=key + 'min')
+        min_val = st.number_input("Min value", value=min, key=key + "min")
     with col2:
-        max_val = st.number_input("Max value", value=max, key=key + 'max')
+        max_val = st.number_input("Max value", value=max, key=key + "max")
 
     if min_val >= max_val:
         st.error("Min value must be less than max value")
@@ -22,7 +23,11 @@ def get_coloring_values(min=0.0, max=100.0, key=""):
     return min_val, max_val
 
 
-def discrete_palette_picker(label="Discrete Color Thresholds", default_thresholds=None, default_colors=None):
+def discrete_palette_picker(
+    label="Discrete Color Thresholds",
+    default_thresholds=None,
+    default_colors=None,
+):
     """
     UI to define a list of (threshold, color) mappings for discrete color assignment.
     Returns: list of (threshold: float, color: hex str)
@@ -30,9 +35,12 @@ def discrete_palette_picker(label="Discrete Color Thresholds", default_threshold
     st.subheader(label)
 
     num_stops = st.number_input(
-        "Number of thresholds", min_value=1, max_value=10,
+        "Number of thresholds",
+        min_value=1,
+        max_value=10,
         value=len(default_thresholds) if default_thresholds else 3,
-        step=1, key="num_thresholds"
+        step=1,
+        key="num_thresholds",
     )
 
     thresholds_colors = []
@@ -40,17 +48,39 @@ def discrete_palette_picker(label="Discrete Color Thresholds", default_threshold
     for i in range(num_stops):
         col1, col2 = st.columns([2, 1])
         with col1:
-            default_val = default_thresholds[i] if default_thresholds and i < len(default_thresholds) else 0.0
-            threshold = st.number_input(f"Threshold {i+1}", value=default_val, key=f"threshold_{i}")
+            default_val = (
+                default_thresholds[i]
+                if default_thresholds and i < len(default_thresholds)
+                else 0.0
+            )
+            threshold = st.number_input(
+                f"Threshold {i + 1}", value=default_val, key=f"threshold_{i}"
+            )
         with col2:
-            default_color = default_colors[i] if default_colors and i < len(default_colors) else "#000000"
-            color = st.color_picker(f"Color {i+1}", value=default_color, key=f"color_{i}", label_visibility="collapsed")
+            default_color = (
+                default_colors[i]
+                if default_colors and i < len(default_colors)
+                else "#000000"
+            )
+            color = st.color_picker(
+                f"Color {i + 1}",
+                value=default_color,
+                key=f"color_{i}",
+                label_visibility="collapsed",
+            )
 
         thresholds_colors.append((threshold, color))
 
     return thresholds_colors
 
-def gradient_palette_picker(vmin, vmax, label="Gradient Palette", default_colors=None, key="palette_picker"):
+
+def gradient_palette_picker(
+    vmin,
+    vmax,
+    label="Gradient Palette",
+    default_colors=None,
+    key="palette_picker",
+):
     st.subheader(label)
 
     num_stops = st.number_input(
@@ -59,7 +89,7 @@ def gradient_palette_picker(vmin, vmax, label="Gradient Palette", default_colors
         max_value=10,
         value=len(default_colors) if default_colors else 3,
         step=1,
-        key=f"{key}_num_stops"
+        key=f"{key}_num_stops",
     )
 
     if default_colors:
@@ -71,17 +101,18 @@ def gradient_palette_picker(vmin, vmax, label="Gradient Palette", default_colors
     default_positions = np.linspace(vmin, vmax, num_stops)
     positions = []
     for i in range(num_stops):
-        col1, col2 = st.columns([2,1])
+        col1, col2 = st.columns([2, 1])
         with col1:
-            color = st.color_picker(f"Color stop {i + 1}", value=colors[i], key=f"{key}_color_{i}")
+            color = st.color_picker(
+                f"Color stop {i + 1}", value=colors[i], key=f"{key}_color_{i}"
+            )
 
         with col2:
-
             pos = st.number_input(
                 f"Position of stop {i + 1} (0-1)",
                 value=float(default_positions[i]),
                 step=0.01,
-                key=f"{key}_pos_{i}"
+                key=f"{key}_pos_{i}",
             )
         picked_colors.append(color)
         positions.append(pos)
@@ -91,6 +122,7 @@ def gradient_palette_picker(vmin, vmax, label="Gradient Palette", default_colors
     positions, picked_colors = zip(*sorted_pairs)
 
     return list(picked_colors), list(positions)
+
 
 def show_gradient_bar(palette, positions, min_val=None, max_val=None):
     """
@@ -110,7 +142,9 @@ def show_gradient_bar(palette, positions, min_val=None, max_val=None):
     # Convert positions to percentages for CSS
     percents = [(p - min_val) / (max_val - min_val) * 100 for p in positions]
 
-    gradient_parts = [f"{color} {percent:.1f}%" for color, percent in zip(palette, percents)]
+    gradient_parts = [
+        f"{color} {percent:.1f}%" for color, percent in zip(palette, percents)
+    ]
     gradient_css = ", ".join(gradient_parts)
 
     gradient_html = f"""
@@ -145,7 +179,7 @@ def show_discrete_bar(discrete_mapping, min_val, max_val):
         prev_val = val
 
     used_width = sum(widths)
-    last_val, last_color = discrete_mapping[-1]
+    _last_val, last_color = discrete_mapping[-1]
     last_width = max(1, 100 - used_width)
 
     prev_val = min_val
@@ -211,6 +245,7 @@ def build_gradient_cmap(palette, positions, vmin, vmax):
     # Build colormap
     cmap = LinearSegmentedColormap.from_list("custom_cmap", rgb_pos)
     return cmap
+
 
 def sort_discrete_mapping(mapping):
     return sorted(mapping, key=lambda x: x[0])

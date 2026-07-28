@@ -1,15 +1,23 @@
 # Core module exports
-from .auto_alignment import StructureMapper, EnsembleMapper
-from .structure_parsing import load_structure, get_coords_from_id, extract_res_from_chain
-from .distance_calc import DistanceMatrix, CompareDistanceMatrix, calc_difference_from_mapper
+from .auto_alignment import EnsembleMapper, StructureMapper
+from .distance_calc import (
+    CompareDistanceMatrix,
+    DistanceMatrix,
+    calc_difference_from_mapper,
+)
+from .structure_parsing import (
+    extract_res_from_chain,
+    get_coords_from_id,
+    load_structure,
+)
 
 __all__ = [
-    'StructureMapper',
-    'EnsembleMapper',
-    'load_structure',
-    'get_coords_from_id',
-    'extract_res_from_chain',
-    'DistanceMatrix',
-    'CompareDistanceMatrix',
-    'calc_difference_from_mapper',
+    "CompareDistanceMatrix",
+    "DistanceMatrix",
+    "EnsembleMapper",
+    "StructureMapper",
+    "calc_difference_from_mapper",
+    "extract_res_from_chain",
+    "get_coords_from_id",
+    "load_structure",
 ]
