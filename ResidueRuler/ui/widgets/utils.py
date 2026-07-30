@@ -1,5 +1,6 @@
 """Utility functions and UI widgets for the ResiRuler Streamlit interface."""
 
+import gc
 import io
 import os
 import random
@@ -47,6 +48,20 @@ SEQUENTIAL_COLORSCALES = [
     "Oranges",
     "YlOrRd",
 ]
+
+def reset_downstream(*keys):
+    """
+    Drop stale large objects (matrices, structures, figures, CIF strings, etc.)
+    from session_state and force a garbage-collection pass.
+    """
+    freed_any = False
+    for key in keys:
+        if key in st.session_state:
+            del st.session_state[key]
+            freed_any = True
+    if freed_any:
+        gc.collect()
+
 
 @contextmanager
 def struct_to_temp_cif(structure):
@@ -149,6 +164,21 @@ def load_structure_if_new(cif_file, name_key, struct_key):
         return None
 
     if name_key not in st.session_state or st.session_state[name_key] != cif_file.name:
+        reset_downstream(
+            struct_key,
+            "mapper",
+            "ref_dm",
+            "tgt_dms_dict",
+            "compare_dms_dict",
+            "small_ref_dm",
+            "small_tgt_dms_dict",
+            "small_compare_dms_dict",
+            "ref_fig",
+            "tgt_figs_dict",
+            "compare_figs_dict",
+            "displacement_dfs",
+        )
+
         cif_path = save_temp_file(cif_file)
         structure = load_structure(cif_path)
 
@@ -170,6 +200,7 @@ def load_structures_if_new(cif_files, name_key_prefix, struct_key_prefix):
         return {}
 
     structures = {}
+    any_changed = False
     for i, cif_file in enumerate(cif_files):
         name_key = f"{name_key_prefix}_{i}"
         struct_key = f"{struct_key_prefix}_{i}"
@@ -178,6 +209,10 @@ def load_structures_if_new(cif_files, name_key_prefix, struct_key_prefix):
             name_key not in st.session_state
             or st.session_state[name_key] != cif_file.name
         ):
+            any_changed = True
+            # free the structure this index used to hold before overwriting it
+            st.session_state.pop(struct_key, None)
+
             cif_path = save_temp_file(cif_file)
             structure = load_structure(cif_path)
 
@@ -188,6 +223,30 @@ def load_structures_if_new(cif_files, name_key_prefix, struct_key_prefix):
 
         # remove .cif for names
         structures[cif_file.name[:-4]] = structure
+
+    # if fewer files are uploaded than before, drop the now-unused cached
+    i = len(cif_files)
+    while f"{name_key_prefix}_{i}" in st.session_state:
+        st.session_state.pop(f"{name_key_prefix}_{i}", None)
+        st.session_state.pop(f"{struct_key_prefix}_{i}", None)
+        any_changed = True
+        i += 1
+
+    if any_changed:
+        # target set changed so reset all things downstream
+        reset_downstream(
+            "mapper",
+            "ref_dm",
+            "tgt_dms_dict",
+            "compare_dms_dict",
+            "small_ref_dm",
+            "small_tgt_dms_dict",
+            "small_compare_dms_dict",
+            "ref_fig",
+            "tgt_figs_dict",
+            "compare_figs_dict",
+            "displacement_dfs",
+        )
 
     return structures
 
@@ -629,7 +688,7 @@ def distance_threshold_ui(key_prefix="distance_threshold",
         upper_threshold = st.number_input(
             "Upper (Å)",
             value=float(15),
-            step=0.5,
+            step=float(0.5),
             key=f"{key_prefix}_upper_num",
         )
 
@@ -666,7 +725,7 @@ def color_scale_ui(purpose="diverging", key_prefix="color_scale", default_colors
                     "Min distance (Å)",
                     min_value=min,
                     value=min,
-                    step=0.5,
+                    step=float(0.5),
                     key=f"{key_prefix}_vmin",
                 )
         with col2:
@@ -674,7 +733,7 @@ def color_scale_ui(purpose="diverging", key_prefix="color_scale", default_colors
                 "Max distance (Å)",
                 min_value=min,
                 value=max,
-                step=0.5,
+                step=float(0.5),
                 key=f"{key_prefix}_vmax",
             )
 

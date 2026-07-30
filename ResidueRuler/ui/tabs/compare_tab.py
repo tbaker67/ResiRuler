@@ -23,6 +23,7 @@ from ui.widgets.utils import (
     get_threshold,
     load_structure_if_new,
     load_structures_if_new,
+    reset_downstream,
     show_alignments,
 )
 
@@ -77,6 +78,19 @@ def show_compare_tab():
     )
 
     if st.button("Map Chains", key="map compare chains"):
+        reset_downstream(
+            "mapper",
+            "ref_dm",
+            "tgt_dms_dict",
+            "compare_dms_dict",
+            "small_ref_dm",
+            "small_tgt_dms_dict",
+            "small_compare_dms_dict",
+            "ref_fig",
+            "tgt_figs_dict",
+            "compare_figs_dict",
+            "_last_selected_chains",
+        )
         st.session_state.mapper = create_ensemble_mapper(
             ref_structure,
             tgt_structures,
@@ -86,12 +100,26 @@ def show_compare_tab():
             nucleotide_aligner,
         )
 
-    if st.session_state.mapper is not None:
+    if st.session_state.get("mapper") is not None:
         show_alignments(st.session_state.mapper, key="compare_alignment")
 
     protein_mode, nucleic_mode = get_measurement_mode(key="compare_measurement_mode")
 
-    if st.button("Compare") and st.session_state.mapper:
+    if st.button("Compare") and st.session_state.get("mapper"):
+        # the previous full-resolution ensemble matrices (and any chain-filtered
+        # "small" copies/figures derived from them) are about to be superseded
+        reset_downstream(
+            "ref_dm",
+            "tgt_dms_dict",
+            "compare_dms_dict",
+            "small_ref_dm",
+            "small_tgt_dms_dict",
+            "small_compare_dms_dict",
+            "ref_fig",
+            "tgt_figs_dict",
+            "compare_figs_dict",
+            "_last_selected_chains",
+        )
         st.session_state.mapper.set_selected_global_coords(
             selected_chains=None,
             protein_mode=protein_mode,
@@ -118,8 +146,8 @@ def show_compare_tab():
             purpose="diverging",
             key_prefix="compare_chainavg_scale",
             default_colorscale="RdBu_r",
-            min= -max(abs(v.mat).max() for v in st.session_state.compare_dms_dict.values()),
-            max= max(abs(v.mat).max() for v in st.session_state.compare_dms_dict.values()),
+            min= float(-max(abs(v.mat).max() for v in st.session_state.compare_dms_dict.values())),
+            max= float(max(abs(v.mat).max() for v in st.session_state.compare_dms_dict.values())),
         )
         overview_plot = plot_chain_average_map(
             compare_dm,
@@ -180,7 +208,7 @@ def show_compare_tab():
                 min= float(0),
                 max= upper_threshold if enable_threshold else max(
                     st.session_state.small_ref_dm.mat.max(),
-                    max(v.mat.max() for v in st.session_state.small_tgt_dms_dict.values())
+                    float(max(v.mat.max() for v in st.session_state.small_tgt_dms_dict.values()))
                     )
             )
             full_res_slot_distance_diff = st.empty()
@@ -188,8 +216,8 @@ def show_compare_tab():
                 purpose="diverging",
                 key_prefix="compare_diff_scale",
                 default_colorscale="RdBu_r",
-                min = -max(abs(v.mat).max() for v in st.session_state.small_compare_dms_dict.values()),
-                max = max(abs(v.mat).max() for v in st.session_state.small_compare_dms_dict.values())
+                min = float(-max(abs(v.mat).max() for v in st.session_state.small_compare_dms_dict.values())),
+                max = float(max(abs(v.mat).max() for v in st.session_state.small_compare_dms_dict.values()))
             )
 
             ref_fig, tgt_figs_dict, compare_figs_dict = plot_all_matrices_ensemble(

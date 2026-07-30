@@ -33,6 +33,7 @@ from ui.widgets.utils import (
     get_threshold,
     load_structure_if_new,
     load_structures_if_new,
+    reset_downstream,
     show_alignments,
     struct_to_temp_cif,
 )
@@ -78,6 +79,17 @@ def show_displacement_tab():
     )
 
     if st.button("Map Chains", key="map displacement chains"):
+        reset_downstream(
+            "mapper",
+            "displacement_dfs",
+            "vector_view",
+            "molstar_builder",
+            "defatt",
+            "chimera_script",
+            "pml_script",
+            "bild_scripts",
+            "pml_arrows",
+        )
         st.session_state.mapper = create_ensemble_mapper(
             ref_structure,
             tgt_structures,
@@ -87,7 +99,7 @@ def show_displacement_tab():
             nucleotide_aligner,
         )
 
-    if st.session_state.mapper is not None:
+    if st.session_state.get("mapper") is not None:
         show_alignments(st.session_state.mapper, key="displacement_alignment")
 
     protein_mode, nucleic_mode = get_measurement_mode(
@@ -95,6 +107,16 @@ def show_displacement_tab():
     )
 
     if st.button("Analyze Displacement"):
+        reset_downstream(
+            "displacement_dfs",
+            "vector_view",
+            "molstar_builder",
+            "defatt",
+            "chimera_script",
+            "pml_script",
+            "bild_scripts",
+            "pml_arrows",
+        )
         st.session_state.mapper.set_selected_global_coords(
             protein_mode=protein_mode, nucleic_mode=nucleic_mode
         )
@@ -103,7 +125,7 @@ def show_displacement_tab():
         )
         st.success("Displacement Analysis Complete")
 
-    if st.session_state.displacement_dfs is not None:
+    if st.session_state.get("displacement_dfs") is not None:
         selected_chains = chain_selector_ui(
             ref_structure,
             "Select Chains in Reference to Compare",

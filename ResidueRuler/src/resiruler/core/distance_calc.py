@@ -10,7 +10,12 @@ class DistanceMatrix:
         self.res_id_mapping = res_id_map
         self.coords = np.array(coords_list, dtype=np.float32)
         self.index_map = dict(sorted(index_map.items()))  # (Chain_ID, resnum) -> index
-        self.mat = cdist(self.coords, self.coords, metric="euclidean")
+        # cdist always returns float64 regardless of input dtype; cast down to
+        # float32 since Angstrom-scale distances don't need double precision,
+        # and this halves the memory footprint of every N x N matrix we keep.
+        self.mat = cdist(self.coords, self.coords, metric="euclidean").astype(
+            np.float32
+        )
 
     def get_distance(self, start_key, end_key):
         i = self.index_map.get(start_key)
@@ -157,8 +162,8 @@ class CompareDistanceMatrix:
             dtype=np.float32,
         )
 
-        self.ref_mat = cdist(self.ref_coords, self.ref_coords)
-        self.tgt_mat = cdist(self.tgt_coords, self.tgt_coords)
+        self.ref_mat = cdist(self.ref_coords, self.ref_coords).astype(np.float32)
+        self.tgt_mat = cdist(self.tgt_coords, self.tgt_coords).astype(np.float32)
         self.mat = self.tgt_mat - self.ref_mat  # comparison matrix
 
     def get_distance_diff(self, start_key, end_key):

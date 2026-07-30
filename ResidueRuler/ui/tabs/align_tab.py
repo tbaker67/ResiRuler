@@ -14,6 +14,7 @@ from ui.widgets.utils import (
     create_downloadable_zip,
     full_aligner_ui,
     get_threshold,
+    reset_downstream,
     save_temp_file,
     select_chains_for_alignment_ui,
 )
@@ -89,6 +90,17 @@ def show_align_tab():
             return
 
         try:
+            # a new run replaces the reference/aligned CIF strings and the
+            # (possibly 4x-duplicated) filtered outputs from a prior run -
+            # free those before generating the new ones
+            reset_downstream(
+                "usalign_R",
+                "usalign_t",
+                "aligned_cif",
+                "ref_cif",
+                "filtered_outputs",
+            )
+
             # Align structure 2 to structure 1 (mobile -> ref)
             R, t = run_usalign_matrix_only(
                 str(structure_to_align_path),
@@ -164,6 +176,10 @@ def show_align_tab():
             else:
                 with st.spinner("Filtering matched residues and chains..."):
                     try:
+                        # drop any previously-filtered CIF strings before
+                        # generating a new set with the current threshold
+                        reset_downstream("filtered_outputs")
+
                         # Use raw file streams
                         ref_cif_stream = io.StringIO(st.session_state.ref_cif)
                         tgt_cif_stream = io.StringIO(st.session_state.aligned_cif)
