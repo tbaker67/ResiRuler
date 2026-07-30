@@ -26,6 +26,27 @@ from src.resiruler.viz.plotting import (
     plot_interactive_contact_map,
 )
 
+DIVERGING_COLORSCALES = [
+    "RdBu_r",
+    "RdBu",
+    "PiYG",
+    "PRGn",
+    "Spectral",
+    "Picnic",
+    "Portland",
+    "Balance",
+]
+
+SEQUENTIAL_COLORSCALES = [
+    "Viridis",
+    "Plasma",
+    "Cividis",
+    "Greens",
+    "Reds",
+    "Blues",
+    "Oranges",
+    "YlOrRd",
+]
 
 @contextmanager
 def struct_to_temp_cif(structure):
@@ -108,23 +129,19 @@ def chain_selector_ui(
         chain_options = sorted(structure.matched_ref_chains)
     else:
         chain_options = sorted({chain.id for model in structure for chain in model})
+    chain_options = sorted(chain_options)
 
-    multiselect_options = ["All"] + chain_options
-    default_selection = ["All"] if default_all else []
     selected = st.multiselect(
-        label, multiselect_options, default=default_selection, key=key
+        label,
+        chain_options,
+        default=[],
+        key=f"{key_prefix}_chain_order_selector",
+        help=(
+            "Order here controls the order chains appear along the heatmap axes. "
+            "Remove and re-add a chain to move it to the end."
+        ),
     )
-
-    if "All" in selected and len(selected) > 1:
-        excluded_chains = [c for c in selected if c != "All"]
-        selected_chains = [c for c in chain_options if c not in excluded_chains]
-        return selected_chains if selected_chains else None
-    elif "All" in selected:
-        return chain_options
-    elif selected:
-        return selected
-    else:
-        return None
+    return selected
 
 
 def load_structure_if_new(cif_file, name_key, struct_key):
@@ -582,7 +599,10 @@ def filter_df_by_chains(df, selected_chains):
     return df[mask].reset_index(drop=True)
 
 
-def distance_threshold_ui(key_prefix="distance_threshold"):
+def distance_threshold_ui(key_prefix="distance_threshold",
+                          min=float(0),
+                          max=float(100)
+                        ):
     """
     Function to allow user input for distance thresholding with a double-ended slider.
     """
@@ -598,39 +618,20 @@ def distance_threshold_ui(key_prefix="distance_threshold"):
 
     st.markdown("**Distance Range (Å)**")
 
-    slider_values = st.slider(
-        "Distance range",
-        min_value=0.0,
-        max_value=100.0,
-        value=(0.0, 15.0),
-        step=0.5,
-        key=f"{key_prefix}_range_slider",
-        label_visibility="collapsed",
-    )
-
     col_low, col_high = st.columns(2)
     with col_low:
-        lower_num = st.number_input(
+        lower_threshold = st.number_input(
             "Lower (Å)",
-            min_value=0.0,
-            max_value=100.0,
-            value=slider_values[0],
             step=0.5,
             key=f"{key_prefix}_lower_num",
         )
     with col_high:
-        upper_num = st.number_input(
+        upper_threshold = st.number_input(
             "Upper (Å)",
-            min_value=0.0,
-            max_value=200.0,
-            value=slider_values[1],
+            value=float(15),
             step=0.5,
             key=f"{key_prefix}_upper_num",
         )
-
-    # Prefer numeric input
-    lower_threshold = lower_num if lower_num != slider_values[0] else slider_values[0]
-    upper_threshold = upper_num if upper_num != slider_values[1] else slider_values[1]
 
     if lower_threshold >= upper_threshold:
         st.warning("Lower threshold must be less than upper threshold.")
@@ -640,6 +641,44 @@ def distance_threshold_ui(key_prefix="distance_threshold"):
     )
 
     return enable_threshold, lower_threshold, upper_threshold
+
+
+def color_scale_ui(purpose="diverging", key_prefix="color_scale", default_colorscale=None, min=float(0), max=float(100)):
+    """
+    Widget for letting the user customize a plot's color scale.
+    """
+    palette_options = DIVERGING_COLORSCALES if purpose == "diverging" else SEQUENTIAL_COLORSCALES
+    default = default_colorscale or palette_options[0]
+    label = "Difference (ΔDistance) Maps" if purpose == "diverging" else "Distance Maps"
+
+    with st.expander(f"Color Scale Settings — {label}", expanded=False):
+        colorscale = st.selectbox(
+            "Colorscale",
+            palette_options,
+            index=palette_options.index(default) if default in palette_options else 0,
+            key=f"{key_prefix}_colorscale",
+        )
+
+        vmin, vmax = None, None
+        col1, col2 = st.columns(2)
+        with col1:
+            vmin = st.number_input(
+                    "Min distance (Å)",
+                    min_value=min,
+                    value=min,
+                    step=0.5,
+                    key=f"{key_prefix}_vmin",
+                )
+        with col2:
+            vmax = st.number_input(
+                "Max distance (Å)",
+                min_value=min,
+                value=max,
+                step=0.5,
+                key=f"{key_prefix}_vmax",
+            )
+
+    return {"colorscale": colorscale, "vmin": vmin, "vmax": vmax}
 
 
 def get_chain_pair_options(index_map):

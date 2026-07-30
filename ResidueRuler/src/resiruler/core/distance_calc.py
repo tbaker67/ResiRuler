@@ -243,6 +243,40 @@ class CompareDistanceMatrix:
         new_cdm.mat = self.mat[np.ix_(filtered_indices, filtered_indices)]
         return new_cdm
 
+    def get_chain_average_matrix(self, agg="mean"):
+        """
+        Collapse the full residue-level comparison matrix down to a small
+        chain x chain matrix.
+        Each cell  is an aggregate over the residue-pair ΔDistance values 
+        between the two chains across the structures.
+    
+        """
+        agg_func = {"mean": np.nanmean, "max": np.nanmax, "min": np.nanmin}[agg]
+ 
+        keys = list(self.index_map.keys())
+        chains = sorted({chain for chain, _resid in keys})
+        chain_to_indices = {c: [] for c in chains}
+        for idx, (chain, _resid) in enumerate(keys):
+            chain_to_indices[chain].append(idx)
+ 
+        n = len(chains)
+        avg_mat = np.full((n, n), np.nan, dtype=np.float32)
+ 
+        for i, c1 in enumerate(chains):
+            idx1 = chain_to_indices[c1]
+            for j, c2 in enumerate(chains[i:], start=i):
+                idx2 = chain_to_indices[c2]
+                block = self.mat[np.ix_(idx1, idx2)]
+                if c1 == c2:
+                    block = block[~np.eye(block.shape[0], dtype=bool)]
+                if block.size == 0:
+                    continue
+                val = agg_func(block)
+                avg_mat[i, j] = val
+                avg_mat[j, i] = val
+ 
+        return avg_mat, chains
+
     def get_size(self):
         """Return the number of residues in the matrix."""
         return len(self.index_map)

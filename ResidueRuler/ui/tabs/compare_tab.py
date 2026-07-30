@@ -9,12 +9,13 @@ from src.resiruler.viz.plotting import (
     plot_comparison_with_contact_filter,
     plot_contacts_gained,
     plot_contacts_lost,
+    plot_chain_average_map
 )
 
 from ui.widgets.utils import (
     chain_selector_ui,
+    color_scale_ui,
     create_ensemble_mapper,
-    display_chain_pair_selector,
     distance_threshold_ui,
     full_aligner_ui,
     get_chain_mappings_for_targets,
@@ -88,25 +89,11 @@ def show_compare_tab():
     if st.session_state.mapper is not None:
         show_alignments(st.session_state.mapper, key="compare_alignment")
 
-    selected_chains = chain_selector_ui(
-        ref_structure,
-        "Select Chains in Reference to Compare",
-        key_prefix="compare",
-    )
-
     protein_mode, nucleic_mode = get_measurement_mode(key="compare_measurement_mode")
-
-    st.subheader("Display Settings")
-
-    enable_threshold, lower_threshold, upper_threshold = distance_threshold_ui(
-        key_prefix="compare_contact"
-    )
-
-    contact_threshold = upper_threshold if enable_threshold else None
 
     if st.button("Compare") and st.session_state.mapper:
         st.session_state.mapper.set_selected_global_coords(
-            selected_chains,
+            selected_chains=None,
             protein_mode=protein_mode,
             nucleic_mode=nucleic_mode,
         )
@@ -114,6 +101,7 @@ def show_compare_tab():
         st.session_state.ref_dm = ref_dm
         st.session_state.tgt_dms_dict = tgt_dms_dict
         st.session_state.compare_dms_dict = compare_dms_dict
+
     if "ref_dm" in st.session_state and st.session_state.ref_dm is not None:
         target_names = list(st.session_state.tgt_dms_dict.keys())
         selected_target = st.selectbox(
@@ -122,110 +110,26 @@ def show_compare_tab():
             key="selected_target_display",
         )
 
-        residue_count = len(st.session_state.ref_dm.index_map)
-        if residue_count > 2000:
-            st.info(
-                f"Large structure detected ({residue_count:,} residues). Chain-pair View Fecommended for Better Performance."
-            )
-
-        display_mode = st.radio(
-            "Display Mode",
-            ["Full Contact Maps", "Chain Pair View"],
-            index=1 if residue_count > 2000 else 0,
-            horizontal=True,
-            help="Full view shows entire contact map. Chain pair view lets you select specific chain interactions for large structures.",
-            key="display_mode",
-        )
-
-        if display_mode == "Full Contact Maps":
-            if "ref_fig" not in st.session_state or st.session_state.ref_fig is None:
-                with st.spinner(
-                    "Generating full contact maps (this may take a moment for large structures)..."
-                ):
-                    ref_fig, tgt_figs_dict, compare_figs_dict = (
-                        plot_all_matrices_ensemble(
-                            st.session_state.ref_dm,
-                            st.session_state.tgt_dms_dict,
-                            st.session_state.compare_dms_dict,
-                            lower_threshold=lower_threshold,
-                            upper_threshold=upper_threshold,
-                        )
-                    )
-                    st.session_state.ref_fig = ref_fig
-                    st.session_state.tgt_figs_dict = tgt_figs_dict
-                    st.session_state.compare_figs_dict = compare_figs_dict
-
-            st.plotly_chart(st.session_state.ref_fig, use_container_width=False)
-            add_svg_download(st.session_state.ref_fig, "full_ref_fig_map.svg")
-
-            st.plotly_chart(
-                st.session_state.tgt_figs_dict[selected_target],
-                use_container_width=False,
-            )
-            add_svg_download(
-                st.session_state.tgt_figs_dict[selected_target],
-                "full_tgt_fig_map.svg",
-            )
-
-            if enable_threshold and contact_threshold is not None:
-                compare_dm = st.session_state.compare_dms_dict[selected_target]
-
-                st.markdown("#### Distance Changes in Shared Contacts")
-                shared_fig = plot_comparison_with_contact_filter(
-                    compare_dm,
-                    contact_threshold=contact_threshold,
-                    title=f"ΔDistance (shared contacts < {contact_threshold}Å)",
-                )
-                st.plotly_chart(shared_fig)
-                add_svg_download(shared_fig, "shared_fig.svg")
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown("#### Contacts Gained in Target")
-                    gained_fig = plot_contacts_gained(
-                        compare_dm, contact_threshold=contact_threshold
-                    )
-                    gained_fig.update_layout(width=600, height=600)
-                    st.plotly_chart(gained_fig, use_container_width=True)
-                    add_svg_download(gained_fig, "full_gained_fig_map.svg")
-
-                with col2:
-                    st.markdown("#### Contacts Lost in Target")
-                    lost_fig = plot_contacts_lost(
-                        compare_dm, contact_threshold=contact_threshold
-                    )
-                    lost_fig.update_layout(width=600, height=600)
-                    st.plotly_chart(lost_fig, use_container_width=True)
-                    add_svg_download(lost_fig, "full_lost_fig_map.svg")
-            else:
-                st.plotly_chart(
-                    st.session_state.compare_figs_dict[selected_target],
-                    use_container_width=False,
-                )
-                add_svg_download(
-                    st.session_state.compare_figs_dict[selected_target],
-                    "compare_fig_map.svg",
-                )
-
-            st.caption(
-                "To Refresh Plots With New Threshold Settings, click 'Compare' again."
-            )
-        else:
-            display_chain_pair_selector(
-                st.session_state.ref_dm,
-                st.session_state.tgt_dms_dict[selected_target],
-                st.session_state.compare_dms_dict[selected_target],
-                selected_target,
-                lower_threshold,
-                upper_threshold,
-                contact_threshold=(contact_threshold if enable_threshold else None),
-            )
-
-        st.subheader("Export Data")
-
         compare_dm = st.session_state.compare_dms_dict[selected_target]
-        total_pairs = len(compare_dm.index_map) * (len(compare_dm.index_map) - 1) // 2
 
+        # Reserve the plot's position first, render its color-scale control later
+        overview_slot = st.empty()
+        chain_avg_scale = color_scale_ui(
+            purpose="diverging",
+            key_prefix="compare_chainavg_scale",
+            default_colorscale="RdBu_r",
+            min= -max(abs(v.mat).max() for v in st.session_state.compare_dms_dict.values()),
+            max= max(abs(v.mat).max() for v in st.session_state.compare_dms_dict.values()),
+        )
+        overview_plot = plot_chain_average_map(
+            compare_dm,
+            colorscale=chain_avg_scale["colorscale"],
+            vmin=chain_avg_scale["vmin"],
+            vmax=chain_avg_scale["vmax"],
+        )
+        overview_slot.plotly_chart(overview_plot)
+
+        total_pairs = len(compare_dm.index_map) * (len(compare_dm.index_map) - 1) // 2
         st.caption(f"Full dataset: {total_pairs:,} residue pairs")
 
         output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "output")
@@ -239,18 +143,133 @@ def show_compare_tab():
                 rows_written = compare_dm.export_to_csv_streaming(csv_filepath)
                 st.success(f"Exported {rows_written:,} rows to: `{csv_filepath}`")
 
-                # For smaller files direct download
-                if total_pairs < 500000:
-                    with open(csv_filepath, "r") as f:
-                        csv_data = f.read()
-                    st.download_button(
-                        label="Download CSV",
-                        data=csv_data,
-                        file_name=csv_filename,
-                        mime="text/csv",
-                        key="download_csv",
+        selected_chains = chain_selector_ui(
+            ref_structure,
+            "Select Chains in Reference to View in Full Resolution",
+            key_prefix="compare_small_chain_selector",
+        )
+        st.subheader("Display Settings")
+        enable_threshold, lower_threshold, upper_threshold = distance_threshold_ui(
+            key_prefix="compare_contact"
+        )
+        contact_threshold = upper_threshold if enable_threshold else None
+        if selected_chains and selected_chains != st.session_state.get("_last_selected_chains"):
+            st.session_state._last_selected_chains = selected_chains
+            st.session_state.small_ref_dm = st.session_state.ref_dm.get_submatrix(selected_chains)
+            
+            st.session_state.small_tgt_dms_dict = {}
+            for tgt, tgt_dm in st.session_state.tgt_dms_dict.items():
+                st.session_state.small_tgt_dms_dict[tgt] = tgt_dm.get_submatrix(selected_chains)
+
+            st.session_state.small_compare_dms_dict = {}
+            for tgt, sub_compare_dm in st.session_state.compare_dms_dict.items():
+                st.session_state.small_compare_dms_dict[tgt] = sub_compare_dm.get_submatrix(selected_chains)
+
+        if selected_chains and "small_ref_dm" in st.session_state:
+            high_res_selected_target = st.selectbox(
+                "Select Target Structure to Display",
+                target_names,
+                key="selected_target_display_small",
+            )
+
+            full_res_slot_distance = st.empty()
+            dist_scale = color_scale_ui(
+                purpose="sequential",
+                key_prefix="compare_dist_scale",
+                default_colorscale="Viridis",
+                min= float(0),
+                max= upper_threshold if enable_threshold else max(
+                    st.session_state.small_ref_dm.mat.max(),
+                    max(v.mat.max() for v in st.session_state.small_tgt_dms_dict.values())
                     )
-                else:
-                    st.info(
-                        f"File is large ({total_pairs:,} pairs). Download from: `{csv_filepath}`"
+            )
+            full_res_slot_distance_diff = st.empty()
+            diff_scale = color_scale_ui(
+                purpose="diverging",
+                key_prefix="compare_diff_scale",
+                default_colorscale="RdBu_r",
+                min = -max(abs(v.mat).max() for v in st.session_state.small_compare_dms_dict.values()),
+                max = max(abs(v.mat).max() for v in st.session_state.small_compare_dms_dict.values())
+            )
+
+            ref_fig, tgt_figs_dict, compare_figs_dict = plot_all_matrices_ensemble(
+                st.session_state.small_ref_dm,
+                st.session_state.small_tgt_dms_dict,
+                st.session_state.small_compare_dms_dict,
+                lower_threshold=lower_threshold,
+                upper_threshold=upper_threshold,
+                dist_colorscale=dist_scale["colorscale"],
+                diff_colorscale=diff_scale["colorscale"],
+                dist_vmin=dist_scale["vmin"],
+                dist_vmax=dist_scale["vmax"],
+                diff_vmax=diff_scale["vmax"],
+            )
+            st.session_state.ref_fig = ref_fig
+            st.session_state.tgt_figs_dict = tgt_figs_dict
+            st.session_state.compare_figs_dict = compare_figs_dict
+
+            shared_fig = plot_comparison_with_contact_filter(
+                                st.session_state.small_compare_dms_dict[selected_target],
+                                contact_threshold=contact_threshold if contact_threshold else 0,
+                                title=f"ΔDistance (shared contacts < {contact_threshold}Å)",
+                                colorscale=diff_scale["colorscale"],
+                                min_val=diff_scale["vmin"],
+                                max_val=diff_scale["vmax"],
+                            )
+
+            with full_res_slot_distance.container():
+                col_ref, col_tgt = st.columns(2)
+
+                with col_ref:
+                    st.plotly_chart(ref_fig, use_container_width=False)
+                    add_svg_download(ref_fig, "full_ref_fig_map.svg")
+
+                with col_tgt:
+                    st.plotly_chart(
+                        tgt_figs_dict[high_res_selected_target],
+                        use_container_width=False,
                     )
+                    add_svg_download(
+                        tgt_figs_dict[high_res_selected_target],
+                        "full_tgt_fig_map.svg",
+                    )
+            
+            with full_res_slot_distance_diff.container():
+                st.plotly_chart(
+                    compare_figs_dict[high_res_selected_target] if not enable_threshold else shared_fig,
+                    use_container_width=True,
+                )
+                add_svg_download(
+                    compare_figs_dict[high_res_selected_target],
+                    "compare_fig_map.svg",
+                )
+
+            if enable_threshold and contact_threshold is not None:
+                small_compare_dm = st.session_state.small_compare_dms_dict[high_res_selected_target]
+            
+                gained_lost_slot = st.empty()
+            
+
+                gained_fig = plot_contacts_gained(
+                    small_compare_dm,
+                    contact_threshold=contact_threshold,
+                )
+                gained_fig.update_layout(width=600, height=600)
+
+                lost_fig = plot_contacts_lost(
+                    small_compare_dm,
+                    contact_threshold=contact_threshold,
+                )
+                lost_fig.update_layout(width=600, height=600)
+
+                with gained_lost_slot.container():
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown("#### Contacts Gained in Target")
+                        st.plotly_chart(gained_fig, use_container_width=True)
+                        add_svg_download(gained_fig, "full_gained_fig_map.svg")
+
+                    with col2:
+                        st.markdown("#### Contacts Lost in Target")
+                        st.plotly_chart(lost_fig, use_container_width=True)
+                        add_svg_download(lost_fig, "full_lost_fig_map.svg")

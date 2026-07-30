@@ -10,6 +10,28 @@ import plotly.graph_objects as go
 
 from ..core.distance_calc import CompareDistanceMatrix
 
+DIVERGING_COLORSCALES = [
+    "RdBu_r",
+    "RdBu",
+    "PiYG",
+    "PRGn",
+    "Spectral",
+    "Picnic",
+    "Portland",
+    "Balance",
+]
+
+SEQUENTIAL_COLORSCALES = [
+    "Viridis",
+    "Plasma",
+    "Cividis",
+    "Greens",
+    "Reds",
+    "Blues",
+    "Oranges",
+    "YlOrRd",
+]
+
 
 def parse_coord_column(series):
     return np.array([np.array(ast.literal_eval(s)) for s in series])
@@ -167,6 +189,49 @@ def plot_distance_difference_plotly(merged):
     return fig
 
 
+def plot_chain_average_map(
+    compare_matrix,
+    agg="mean",
+    title=None,
+    colorscale="RdBu_r",
+    vmin=None,
+    vmax=None,
+):
+    """
+    Plots a small chain x chain heatmap of aggregated ΔDistance values.
+    """
+    avg_mat, chain_labels = compare_matrix.get_chain_average_matrix(agg=agg)
+
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=avg_mat,
+            x=chain_labels,
+            y=chain_labels,
+            colorscale=colorscale,
+            zmid=0.0,
+            zmin=vmin,
+            zmax=vmax,
+            colorbar={"title": f"{agg.title()} ΔDistance (Å)"},
+            hovertemplate="Chain 1: %{x}<br>Chain 2: %{y}<br>Value: %{z:.2f} Å<extra></extra>",
+            text=np.round(avg_mat, 1),
+            texttemplate="%{text}",
+        )
+    )
+
+    fig.update_layout(
+        title=title or f"{agg.title()} ΔDistance by Chain Pair",
+        xaxis_title="Chain",
+        yaxis_title="Chain",
+        xaxis={"tickangle": 0},
+        autosize=False,
+        width=min(700, 120 + 80 * len(chain_labels)),
+        height=min(700, 120 + 80 * len(chain_labels)),
+    )
+
+    return fig
+
+
 def plot_interactive_contact_map(
     matrix,
     lower_threshold=None,
@@ -174,11 +239,18 @@ def plot_interactive_contact_map(
     title=None,
     min=None,
     max=None,
+    colorscale=None
 ):
+    """
+    Plots a small chain x chain heatmap of aggregated ΔDistance values.
+    """
     mat, index_map = matrix.mat, matrix.index_map
     if lower_threshold is not None and upper_threshold is not None:
         mat = np.where(((mat < upper_threshold) & (mat > lower_threshold)), mat, np.nan)
-    if isinstance(matrix, CompareDistanceMatrix):
+
+    is_compare = isinstance(matrix, CompareDistanceMatrix)
+
+    if is_compare:
         hovertemplate = (
             "Residue 1: %{x}<br>Residue 2: %{y}<br>ΔDistance: %{z:.2f} Å<extra></extra>"
         )
@@ -188,22 +260,23 @@ def plot_interactive_contact_map(
         )
 
     labels = [f"{chain}-{resid[1]}{resid[2]}" for (chain, resid) in index_map]
-    vmax = np.nanmax(np.abs(mat))
+
+    if colorscale is None:
+        colorscale = "RdBu_r" if is_compare else "viridis"
+
     fig = go.Figure(
         data=go.Heatmap(
             z=mat,
             x=labels,
             y=labels,
-            colorscale=(
-                "RdBu_r" if isinstance(matrix, CompareDistanceMatrix) else "viridis"
-            ),
-            zmid=0.0 if isinstance(matrix, CompareDistanceMatrix) else None,
-            zmin=min if min is not None else -vmax,
-            zmax=max if max is not None else vmax,
+            colorscale=colorscale,
+            zmid=0.0 if is_compare else None,
+            zmin=min,
+            zmax=max,
             colorbar={
                 "title": (
                     "ΔDistance (Å)"
-                    if isinstance(matrix, CompareDistanceMatrix)
+                    if is_compare
                     else "Distance (Å)"
                 )
             },
@@ -229,6 +302,7 @@ def plot_comparison_with_contact_filter(
     title=None,
     min_val=None,
     max_val=None,
+    colorscale="RdBu_r",
 ):
     """
     Plot comparison matrix showing only ΔDistance where contacts exist in BOTH structures.
@@ -237,7 +311,6 @@ def plot_comparison_with_contact_filter(
         compare_matrix: CompareDistanceMatrix object
         contact_threshold: Distance cutoff for defining a "contact" (Å)
         title: Plot title
-        min_val, max_val: Color scale bounds
 
     Returns:
         Plotly figure
@@ -261,10 +334,9 @@ def plot_comparison_with_contact_filter(
             z=mat,
             x=labels,
             y=labels,
-            colorscale="RdBu_r",
+            colorscale=colorscale,
             zmid=0.0,
-            zmin=min_val if min_val is not None else -
-            vmax,
+            zmin=min_val if min_val is not None else -vmax,
             zmax=max_val if max_val is not None else vmax,
             colorbar={
                 "title": "ΔDistance (Å)"},
@@ -283,7 +355,11 @@ def plot_comparison_with_contact_filter(
     return fig
 
 
-def plot_contacts_gained(compare_matrix, contact_threshold=15.0, title=None):
+def plot_contacts_gained(
+    compare_matrix,
+    contact_threshold=15.0,
+    title=None,
+):
     """
     Plot contacts that are GAINED in target (not in ref, present in tgt).
     Shows the target distance for gained contacts.
@@ -307,10 +383,7 @@ def plot_contacts_gained(compare_matrix, contact_threshold=15.0, title=None):
             x=labels,
             y=labels,
             colorscale="Greens",
-            zmin=0,
-            zmax=contact_threshold,
-            colorbar={
-                "title": "Distance (Å)"},
+            showscale=False,
             hovertemplate="Residue 1: %{x}<br>Residue 2: %{y}<br>Target Distance: %{z:.2f} Å<extra></extra>",
         ))
 
@@ -327,7 +400,11 @@ def plot_contacts_gained(compare_matrix, contact_threshold=15.0, title=None):
     return fig
 
 
-def plot_contacts_lost(compare_matrix, contact_threshold=15.0, title=None):
+def plot_contacts_lost(
+    compare_matrix,
+    contact_threshold=15.0,
+    title=None,
+):
     """
     Plot contacts that are LOST in target (in ref, not in tgt).
     Shows the reference distance for lost contacts.
@@ -349,10 +426,7 @@ def plot_contacts_lost(compare_matrix, contact_threshold=15.0, title=None):
             x=labels,
             y=labels,
             colorscale="Reds",
-            zmin=0,
-            zmax=contact_threshold,
-            colorbar={
-                "title": "Distance (Å)"},
+            showscale=False,
             hovertemplate="Residue 1: %{x}<br>Residue 2: %{y}<br>Reference Distance: %{z:.2f} Å<extra></extra>",
         ))
 
@@ -375,6 +449,12 @@ def plot_all_matrices_ensemble(
     compare_dms_dict,
     lower_threshold=None,
     upper_threshold=None,
+    dist_colorscale=None,
+    diff_colorscale=None,
+    dist_vmin=None,
+    dist_vmax=None,
+    diff_vmax=None,
+    percentile=None,
 ):
     """
     This takes outputs produce by the EnsembleMapper calc_matrices functions and produces dictionaries the contain plotly objects for interactive contact maps
@@ -387,19 +467,41 @@ def plot_all_matrices_ensemble(
     diff_mats = [cm.mat for cm in compare_dms_dict.values()]
 
     # get the global min and max values across all structures
-    dist_min_vals = [np.nanmin(m) for m in dist_mats if not np.isnan(m).all()]
-    dist_max_vals = [np.nanmax(m) for m in dist_mats if not np.isnan(m).all()]
-    dist_min = (
-        min(dist_min_vals) if dist_min_vals else 0
-    )  # TODO: Adjust default values, or just throw error/print message
-    dist_max = max(dist_max_vals) if dist_max_vals else 100
-
-    diff_min_vals = [np.nanmin(m) for m in diff_mats if not np.isnan(m).all()]
-    diff_max_vals = [np.nanmax(m) for m in diff_mats if not np.isnan(m).all()]
-    if diff_min_vals and diff_max_vals:
-        diff_abs_max = max(abs(min(diff_min_vals)), abs(max(diff_max_vals)))
+    if dist_vmin is not None and dist_vmax is not None:
+        dist_min, dist_max = dist_vmin, dist_vmax
     else:
-        diff_abs_max = 1  # default fallback
+        dist_min_vals = [np.nanmin(m) for m in dist_mats if not np.isnan(m).all()]
+        dist_max_vals = [np.nanmax(m) for m in dist_mats if not np.isnan(m).all()]
+        dist_min = (
+            dist_vmin if dist_vmin is not None
+            else (min(dist_min_vals) if dist_min_vals else 0)
+        )
+        if dist_vmax is not None:
+            dist_max = dist_vmax
+        elif upper_threshold:
+            dist_max = upper_threshold
+        else:
+            dist_max = max(dist_max_vals) if dist_max_vals else 1
+
+    if diff_vmax is not None:
+        diff_abs_max = diff_vmax
+    else:
+        diff_min_vals = [np.nanmin(m) for m in diff_mats if not np.isnan(m).all()]
+        diff_max_vals = [np.nanmax(m) for m in diff_mats if not np.isnan(m).all()]
+        if diff_min_vals and diff_max_vals:
+            if percentile is not None:
+                all_abs = np.concatenate(
+                    [
+                        np.abs(m[~np.isnan(m)]).ravel()
+                        for m in diff_mats
+                        if not np.isnan(m).all()
+                    ]
+                )
+                diff_abs_max = float(np.percentile(all_abs, percentile)) if all_abs.size else 1
+            else:
+                diff_abs_max = max(abs(min(diff_min_vals)), abs(max(diff_max_vals)))
+        else:
+            diff_abs_max = 1  # default fallback
 
     tgt_figs_dict = {}
     compare_figs_dict = {}
@@ -412,6 +514,7 @@ def plot_all_matrices_ensemble(
         title="Reference Distance Matrix",
         min=dist_min,
         max=dist_max,
+        colorscale=dist_colorscale,
     )
 
     # plot targets
@@ -423,6 +526,7 @@ def plot_all_matrices_ensemble(
             title=f"Target Distance Matrix: {name}",
             min=dist_min,
             max=dist_max,
+            colorscale=dist_colorscale,
         )
 
     # Plot comparison matrices (differences) on symmetric scale
@@ -434,6 +538,7 @@ def plot_all_matrices_ensemble(
             title=f"Comparison Distance Matrix: {name}",
             min=-diff_abs_max,
             max=diff_abs_max,
+            colorscale=diff_colorscale,
         )
 
     return ref_fig, tgt_figs_dict, compare_figs_dict
