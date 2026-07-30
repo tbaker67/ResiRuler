@@ -77,7 +77,7 @@ def show_compare_tab():
         "compare_pct_id",
     )
 
-    if st.button("Map Chains", key="map compare chains"):
+    if st.button("Map Chains", key="map compare chains", help="Find chain-chain and residue-residue correspondences"):
         reset_downstream(
             "pairwise_mapper",
             "ref_dm",
@@ -154,7 +154,10 @@ def show_compare_tab():
             vmin=chain_avg_scale["vmin"],
             vmax=chain_avg_scale["vmax"],
         )
-        overview_slot.plotly_chart(overview_plot)
+        overview_slot.plotly_chart(
+            overview_plot,
+            help="Overview plot that showing the average change in distance for all residue pairs between the two chains in the block"
+        )
 
         total_pairs = len(compare_dm.index_map) * (len(compare_dm.index_map) - 1) // 2
         st.caption(f"Full dataset: {total_pairs:,} residue pairs")
@@ -165,7 +168,13 @@ def show_compare_tab():
         csv_filename = f"comparison_{selected_target}.csv"
         csv_filepath = os.path.join(output_dir, csv_filename)
 
-        if st.button("Export Full Comparison to CSV", key="export_csv"):
+        if st.button(
+            "Export Full Data to CSV",
+            key="export_csv",
+            help="Exports the full data to a CSV. " \
+            "Because this can be quite large, the file is directly downloaded to  " \
+            f"{csv_filepath}"
+            ):
             with st.spinner(f"Exporting {total_pairs:,} pairs to CSV"):
                 rows_written = compare_dm.export_to_csv_streaming(csv_filepath)
                 st.success(f"Exported {rows_written:,} rows to: `{csv_filepath}`")
@@ -264,7 +273,7 @@ def show_compare_tab():
             with full_res_slot_distance_diff.container():
                 st.plotly_chart(
                     compare_figs_dict[high_res_selected_target] if not enable_threshold else shared_fig,
-                    use_container_width=True,
+                    use_container_width=False,
                 )
                 add_svg_download(
                     compare_figs_dict[high_res_selected_target],

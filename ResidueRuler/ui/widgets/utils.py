@@ -322,12 +322,15 @@ def get_chain_mappings_for_targets(
 
 
 def get_threshold(label, default, key):
-    threshold_input = st.text_input(label, value=default, key=key)
+    threshold_input = st.text_input(label, value=default, key=key,
+                                    help="Minimum Percent Identity required for any two chains to be matched with one another"
+                                    )
     try:
         return float(threshold_input)
     except ValueError:
         st.error("Please enter a valid number.")
         return None
+    
 
 
 def create_downloadable_zip_grouped(file_groups):
@@ -396,7 +399,9 @@ def aligner_ui(protein, key_prefix="aligner"):
         col1, col2 = st.columns(2)
         with col1:
             mode = st.selectbox(
-                "Alignment Mode", ["global", "local"], key=f"{key_prefix}_mode"
+                "Alignment Mode", ["global", "local"], key=f"{key_prefix}_mode",
+                help="Whether to use the whole alignment (global), "
+                "or the best matching sub-region (local)."
             )
         with col2:
             if protein:
@@ -404,12 +409,14 @@ def aligner_ui(protein, key_prefix="aligner"):
                     "Substitution Matrix",
                     PROTEIN_SUBSTITUTION_MATRICES,
                     key=f"{key_prefix}_matrix",
+                    help="The substitution matrix that will be used during alignment."
                 )
             else:
                 matrix_name = st.selectbox(
                     "Substitution Matrix",
                     NUCLEOTIDE_SUBSTITUTION_MATRICES,
                     key=f"{key_prefix}_matrix",
+                    help="The substitution matrix that will be used during alignment."
                 )
         # Gap scores in one row
         col3, col4 = st.columns(2)
@@ -419,6 +426,9 @@ def aligner_ui(protein, key_prefix="aligner"):
                 value=-10,
                 step=1,
                 key=f"{key_prefix}_open_gap",
+                help="Value added to the alignment score when a gap is opened." \
+                " A more negative value means that gaps are less likely to be opened in the alignment."
+
             )
         with col4:
             extend_gap_score = st.number_input(
@@ -426,12 +436,15 @@ def aligner_ui(protein, key_prefix="aligner"):
                 value=-1,
                 step=1,
                 key=f"{key_prefix}_extend_gap",
+                help="Value subtracted from the alignment score when an existing gap is made longer." \
+                " A more negative value means that gaps are less likely to be extended in the alignment."
             )
         
         # optional end-gap penalties
         with st.expander("Advanced: End-gap penalties"):
             use_end_gaps = st.checkbox(
-                "Enable End-Gap Penalties?", key=f"{key_prefix}_use_end_gaps"
+                "Enable End-Gap Penalties?", key=f"{key_prefix}_use_end_gaps",
+                help="Whether or not to apply penalties to gaps that occur before (left) or after (right) a sequence."
             )
             left_open_gap_score = None
             right_open_gap_score = None
@@ -443,6 +456,8 @@ def aligner_ui(protein, key_prefix="aligner"):
                         value=0,
                         step=1,
                         key=f"{key_prefix}_left_end_gap",
+                        help="Value added to the alignment score for any gaps that occur at the beginning of the sequence." \
+                        " A more negative values means that gaps at the beginning of the sequence are less likely."
                     )
                 with col6:
                     right_open_gap_score = st.number_input(
@@ -450,6 +465,8 @@ def aligner_ui(protein, key_prefix="aligner"):
                         value=0,
                         step=1,
                         key=f"{key_prefix}_right_end_gap",
+                        help="Value added to the alignment score for any gaps that occur at the end of the sequence." \
+                        " A more negative values means that gaps at the end of the sequence are less likely."
                     )
 
     aligner = PairwiseAligner()
@@ -458,8 +475,8 @@ def aligner_ui(protein, key_prefix="aligner"):
     aligner.open_gap_score = open_gap_score
     aligner.extend_gap_score = extend_gap_score
     if use_end_gaps:
-        aligner.left_open_gap_score = left_open_gap_score
-        aligner.right_open_gap_score = right_open_gap_score
+        aligner.open_left_gap_score = left_open_gap_score
+        aligner.open_right_gap_score = right_open_gap_score
 
     return aligner
 
@@ -480,8 +497,14 @@ def full_aligner_ui(key):
 
         rmsd_score_scaling_factor = st.number_input(
             "Scaling Factor For RMSD Penalty",
-            value = float(1e-3),
-            key=f"{key}_rmsd_scaling_factor"
+            value = float(1e-6),
+            key=f"{key}_rmsd_scaling_factor",
+            min_value=0.0,
+            step=1e-6,
+            format="%.8f",
+            help= "This value is used to adjust how much to " \
+                "penalize rmsd between chains during the chain matching process. " \
+                "A higher value means that chains that are further apart will be more heavily penalized"
         )
     return protein_aligner, nucleotide_aligner, rmsd_score_scaling_factor
 

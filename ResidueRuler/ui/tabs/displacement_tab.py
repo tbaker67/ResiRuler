@@ -78,7 +78,7 @@ def show_displacement_tab():
         "displacement_pct_id",
     )
 
-    if st.button("Map Chains", key="map displacement chains"):
+    if st.button("Map Chains", key="map displacement chains", help="Find chain-chain and residue-residue correspondences"):
         reset_downstream(
             "disp_mapper",
             "displacement_dfs",
