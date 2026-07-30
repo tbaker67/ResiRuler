@@ -69,7 +69,7 @@ def show_compare_tab():
         print(chain_mappings)
 
     st.session_state.setdefault("pairwise_mapper", None)
-    protein_aligner, nucleotide_aligner = full_aligner_ui(key="compare")
+    protein_aligner, nucleotide_aligner, rmsd_scaling_factor = full_aligner_ui(key="compare")
 
     pct_id_threshold = get_threshold(
         "Set a Minimum Percent Identity Threshold for Matching Chains Together",
@@ -98,6 +98,7 @@ def show_compare_tab():
             pct_id_threshold,
             protein_aligner,
             nucleotide_aligner,
+            rmsd_scaling_factor
         )
 
     if st.session_state.get("pairwise_mapper") is not None:

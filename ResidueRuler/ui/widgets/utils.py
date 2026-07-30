@@ -99,6 +99,7 @@ def create_ensemble_mapper(
     threshold,
     protein_aligner,
     nucleotide_aligner,
+    rmsd_scaling_factor
 ):
     ensemble_mapper = EnsembleMapper(
         ref_structure,
@@ -112,6 +113,7 @@ def create_ensemble_mapper(
             tgt_structure,
             threshold,
             chain_mappings[structure_name],
+            rmsd_scaling_factor
         )
 
     return ensemble_mapper
@@ -409,7 +411,6 @@ def aligner_ui(protein, key_prefix="aligner"):
                     NUCLEOTIDE_SUBSTITUTION_MATRICES,
                     key=f"{key_prefix}_matrix",
                 )
-
         # Gap scores in one row
         col3, col4 = st.columns(2)
         with col3:
@@ -426,7 +427,7 @@ def aligner_ui(protein, key_prefix="aligner"):
                 step=1,
                 key=f"{key_prefix}_extend_gap",
             )
-
+        
         # optional end-gap penalties
         with st.expander("Advanced: End-gap penalties"):
             use_end_gaps = st.checkbox(
@@ -476,7 +477,13 @@ def full_aligner_ui(key):
             nucleotide_aligner = aligner_ui(
                 protein=False, key_prefix=f"{key} nucleotide compare aligner"
             )
-    return protein_aligner, nucleotide_aligner
+
+        rmsd_score_scaling_factor = st.number_input(
+            "Scaling Factor For RMSD Penalty",
+            value = float(1e-3),
+            key=f"{key}_rmsd_scaling_factor"
+        )
+    return protein_aligner, nucleotide_aligner, rmsd_score_scaling_factor
 
 
 def show_alignments(ensemble_mapper, key="alignment_select"):

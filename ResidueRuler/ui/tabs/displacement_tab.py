@@ -70,7 +70,7 @@ def show_displacement_tab():
         )
 
     st.session_state.setdefault("disp_mapper", None)
-    protein_aligner, nucleotide_aligner = full_aligner_ui(key="displacement")
+    protein_aligner, nucleotide_aligner, rmsd_scaling_factor = full_aligner_ui(key="displacement")
 
     pct_id_threshold = get_threshold(
         "Set a Minimum Percent Identity Threshold for Matching Chains Together",
@@ -97,6 +97,7 @@ def show_displacement_tab():
             pct_id_threshold,
             protein_aligner,
             nucleotide_aligner,
+            rmsd_scaling_factor
         )
 
     if st.session_state.get("disp_mapper") is not None:

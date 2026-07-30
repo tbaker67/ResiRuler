@@ -308,7 +308,7 @@ class StructureMapper:
                 seq_type,
             )
 
-    def map_chains(self, threshold):
+    def map_chains(self, threshold, rmsd_scale_factor):
         """
         Map all chains into ChainMapper Objects based on first sequence, then break ties with RMSD
         Assignmnet of matches occurs via solving the linear sum assignment problem
@@ -386,7 +386,7 @@ class StructureMapper:
 
             score = (
                 alignment.score / len(aligned_ref_seq.replace("-", ""))
-            ) - 0.1 * rmsd  # prioritize alignment score, break ties with RMSD
+            ) - rmsd_scale_factor * rmsd  # prioritize alignment score, break ties with RMSD
             valid_pairs.append((ref_id, tgt_id))
             scores[(ref_id, tgt_id)] = score
             mappings[(ref_id, tgt_id)] = potential_map
@@ -548,7 +548,7 @@ class EnsembleMapper:
         self.coords_targets_dict = {}  # Structure Name -> aligned_tgt_coords
 
     def add_structure(
-        self, tgt_structure_name, tgt_structure, threshold, explicit_mapping
+        self, tgt_structure_name, tgt_structure, threshold, explicit_mapping, rmsd_scale_factor
     ):
         structure_mapping = StructureMapper(
             self.ref_structure,
@@ -557,7 +557,7 @@ class EnsembleMapper:
             self.nucleotide_aligner,
             explicit_mapping,
         )
-        structure_mapping.map_chains(threshold)
+        structure_mapping.map_chains(threshold, rmsd_scale_factor)
         self.structure_mappings[tgt_structure_name] = structure_mapping
 
     def get_common_ref_residues(self, selected_chains):
@@ -803,6 +803,7 @@ def filter_and_write_aligned_maps(
     protein_aligner,
     nucleotide_aligner,
     identity_threshold=95.0,
+    rmsd_scale_factor=0.1
 ):
     """
     Filter aligned models, and write out new models which include only matched residues as well as models which include only matched chains
@@ -818,7 +819,7 @@ def filter_and_write_aligned_maps(
         nucleotide_aligner,
         explicit_mapping=None,
     )
-    mapper.map_chains(threshold=identity_threshold)
+    mapper.map_chains(threshold=identity_threshold,rmsd_scale_factor=rmsd_scale_factor)
 
     matched_ref_residues = set()
     matched_tgt_residues = set()

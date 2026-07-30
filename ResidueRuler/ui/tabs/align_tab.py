@@ -163,7 +163,7 @@ def show_align_tab():
             file_name=cif_filename,
             mime="chemical/x-mm-cif",
         )
-        protein_aligner, nucleotide_aligner = full_aligner_ui(key="align")
+        protein_aligner, nucleotide_aligner, rmsd_scaling_factor = full_aligner_ui(key="align")
         pct_id_threshold = get_threshold(
             "Set a Minimum Percent Identity Threshold for Matching Chains Together",
             "95.0",
@@ -195,6 +195,7 @@ def show_align_tab():
                             protein_aligner,
                             nucleotide_aligner,
                             identity_threshold=pct_id_threshold,
+                            rmsd_scale_factor=rmsd_scaling_factor
                         )
 
                         st.session_state["filtered_outputs"] = {
