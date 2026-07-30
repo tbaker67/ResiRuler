@@ -1,26 +1,21 @@
 
 # ResiRuler
 
-ResiRuler is a web interface based tool for analyzing and visualizing residue-level structural changes in biomolecular models. It supports measuring distances between annotated residues, comparing distances across aligned conformations, and visualizing movement vectors with options to visualize in ChimeraX
+ResiRuler is a web interface based tool for analyzing residue-level structural changes both across biomolecular models. It supports alignment of structures using MMAlign, comparison of pairwise distances between residues, and visualization of displacements between corresponding residues across structures, which can be exported and viewed in ChimeraX and PyMol
 
 ---
 
-## Features
+## Requirements
 
-- Extracts and compares residue distances from `.cif` structures
-- Computes movement vectors between aligned conformations
-- Generates ChimeraX scripts for structural visualization
-- Plots distance difference and residue displacement metrics as well as contact maps
-- Aligns two models using the mmalign algorithm and cleans up non-matched residues
+- A Linux or MacOS operating system
+- Python 3.11
+- [Conda](https://www.anaconda.com/docs/getting-started/getting-started) Python package manager
 
 ---
 
 ## Installation
 
 Clone the repository and install the required dependencies:
-ResiRuler dependencies are most easily downloaded using [conda](https://www.anaconda.com/docs/getting-started/getting-started)
-
-Once conda is up and running here is how you can install resiruler as well as the associated dependencies
 
 ```bash
 git clone https://github.com/tbaker67/ResiRuler.git
@@ -32,7 +27,7 @@ conda activate resiruler
 
 ## Running the UI
 
-ResiRuler's web interface is current managed through streamlit
+ResiRuler's web interface is managed through streamlit
 
 First make sure to activate the conda environment
 ```bash
@@ -52,13 +47,14 @@ A successful launch will provide this message in the terminal. Using the network
 
 ## The "Align" Tab
 
-Align any two genetically similar molecules using [USalign's](https://www.nature.com/articles/s41592-022-01585-1) multimer alignment algorithm (MMalign). Use this tab before comparing or analyzing movement between structures.
+The Align Tab provides an easy way to align any two related similar structures using [USalign's](https://www.nature.com/articles/s41592-022-01585-1) multimer alignment algorithm (MMalign). Use this tab before comparing or analyzing movement between structures, or if you already have prealigned structures they can be used directly.
 
 Start by uploading files:
 
 ![Align Page 1](ResidueRuler/images/align/Align_Page1.png)
 
 You can then select chains which you want the alignment program to consider when determining the best alignment.
+Selecting less chains will result in a quicker alignment.
 
 ![Align Page 2](ResidueRuler/images/align/Align_Page2.png)
 
@@ -77,13 +73,10 @@ The user is also provided with options for adjusting parameters associated with 
 
 ## The "Pairwise Distance Difference" Tab
 
-Compare inter-residue distances between two structures.
+The Pairwise Distance Difference Tab provides a view of how the distances between pairs of residues are changing across structures.
+This can be represented both by raw distance changes, as well as changes in "contacts" based upon user specified thresholds
 
-- Auto-matches chains between structures, or allows explicit mapping.
-- For best results, supply aligned structures from the **Align** tab or other alignment software.
-
-
-Start by uploading the structure(s) of interest
+Start by uploading the ALIGNED structure(s) of interest
 
 ![Pairwise Distance Difference Tab 1](ResidueRuler/images/compare/Compare_Page1.png)
 
