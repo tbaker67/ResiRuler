@@ -69,7 +69,7 @@ def show_displacement_tab():
             tgt_structures, ref_chains, key="displacement_mappings"
         )
 
-    st.session_state.setdefault("mapper", None)
+    st.session_state.setdefault("disp_mapper", None)
     protein_aligner, nucleotide_aligner = full_aligner_ui(key="displacement")
 
     pct_id_threshold = get_threshold(
@@ -80,7 +80,7 @@ def show_displacement_tab():
 
     if st.button("Map Chains", key="map displacement chains"):
         reset_downstream(
-            "mapper",
+            "disp_mapper",
             "displacement_dfs",
             "vector_view",
             "molstar_builder",
@@ -90,7 +90,7 @@ def show_displacement_tab():
             "bild_scripts",
             "pml_arrows",
         )
-        st.session_state.mapper = create_ensemble_mapper(
+        st.session_state.disp_mapper = create_ensemble_mapper(
             ref_structure,
             tgt_structures,
             chain_mappings,
@@ -99,8 +99,8 @@ def show_displacement_tab():
             nucleotide_aligner,
         )
 
-    if st.session_state.get("mapper") is not None:
-        show_alignments(st.session_state.mapper, key="displacement_alignment")
+    if st.session_state.get("disp_mapper") is not None:
+        show_alignments(st.session_state.disp_mapper, key="displacement_alignment")
 
     protein_mode, nucleic_mode = get_measurement_mode(
         key="displacement_measurement_mode"
@@ -117,11 +117,11 @@ def show_displacement_tab():
             "bild_scripts",
             "pml_arrows",
         )
-        st.session_state.mapper.set_selected_global_coords(
+        st.session_state.disp_mapper.set_selected_global_coords(
             protein_mode=protein_mode, nucleic_mode=nucleic_mode
         )
         st.session_state.displacement_dfs = (
-            st.session_state.mapper.calc_displacement_dfs()
+            st.session_state.disp_mapper.calc_displacement_dfs()
         )
         st.success("Displacement Analysis Complete")
 

@@ -42,7 +42,7 @@ def add_svg_download(fig, filename):
 
 
 def show_compare_tab():
-    st.header("Compare Distances Within Two Structures")
+    st.header("Pairwise Distance Difference Analysis")
 
     ref_cif = st.file_uploader(
         "Upload Aligned Reference CIF", type=["cif"], key="reference1"
@@ -68,7 +68,7 @@ def show_compare_tab():
         )
         print(chain_mappings)
 
-    st.session_state.setdefault("mapper", None)
+    st.session_state.setdefault("pairwise_mapper", None)
     protein_aligner, nucleotide_aligner = full_aligner_ui(key="compare")
 
     pct_id_threshold = get_threshold(
@@ -79,7 +79,7 @@ def show_compare_tab():
 
     if st.button("Map Chains", key="map compare chains"):
         reset_downstream(
-            "mapper",
+            "pairwise_mapper",
             "ref_dm",
             "tgt_dms_dict",
             "compare_dms_dict",
@@ -91,7 +91,7 @@ def show_compare_tab():
             "compare_figs_dict",
             "_last_selected_chains",
         )
-        st.session_state.mapper = create_ensemble_mapper(
+        st.session_state.pairwise_mapper = create_ensemble_mapper(
             ref_structure,
             tgt_structures,
             chain_mappings,
@@ -100,14 +100,12 @@ def show_compare_tab():
             nucleotide_aligner,
         )
 
-    if st.session_state.get("mapper") is not None:
-        show_alignments(st.session_state.mapper, key="compare_alignment")
+    if st.session_state.get("pairwise_mapper") is not None:
+        show_alignments(st.session_state.pairwise_mapper, key="compare_alignment")
 
     protein_mode, nucleic_mode = get_measurement_mode(key="compare_measurement_mode")
 
-    if st.button("Compare") and st.session_state.get("mapper"):
-        # the previous full-resolution ensemble matrices (and any chain-filtered
-        # "small" copies/figures derived from them) are about to be superseded
+    if st.button("Generate Matrix") and st.session_state.get("pairwise_mapper"):
         reset_downstream(
             "ref_dm",
             "tgt_dms_dict",
@@ -120,12 +118,12 @@ def show_compare_tab():
             "compare_figs_dict",
             "_last_selected_chains",
         )
-        st.session_state.mapper.set_selected_global_coords(
+        st.session_state.pairwise_mapper.set_selected_global_coords(
             selected_chains=None,
             protein_mode=protein_mode,
             nucleic_mode=nucleic_mode,
         )
-        ref_dm, tgt_dms_dict, compare_dms_dict = st.session_state.mapper.calc_matrices()
+        ref_dm, tgt_dms_dict, compare_dms_dict = st.session_state.pairwise_mapper.calc_matrices()
         st.session_state.ref_dm = ref_dm
         st.session_state.tgt_dms_dict = tgt_dms_dict
         st.session_state.compare_dms_dict = compare_dms_dict

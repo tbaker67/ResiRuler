@@ -20,12 +20,6 @@ from src.resiruler.core.structure_parsing import (
     extract_res_from_chain,
     load_structure,
 )
-from src.resiruler.viz.plotting import (
-    plot_comparison_with_contact_filter,
-    plot_contacts_gained,
-    plot_contacts_lost,
-    plot_interactive_contact_map,
-)
 
 DIVERGING_COLORSCALES = [
     "RdBu_r",
@@ -366,7 +360,7 @@ PROTEIN_SUBSTITUTION_MATRICES = [
     "BLOSUM62",
     "BLOSUM45",
     "BLOSUM50",
-    "BLOSUM89",
+    "BLOSUM80",
     "BLOSUM90",
     "BLASTP",
     "DAYHOFF",
@@ -400,18 +394,18 @@ def aligner_ui(protein, key_prefix="aligner"):
         col1, col2 = st.columns(2)
         with col1:
             mode = st.selectbox(
-                "Alignment mode", ["global", "local"], key=f"{key_prefix}_mode"
+                "Alignment Mode", ["global", "local"], key=f"{key_prefix}_mode"
             )
         with col2:
             if protein:
                 matrix_name = st.selectbox(
-                    "Substitution matrix",
+                    "Substitution Matrix",
                     PROTEIN_SUBSTITUTION_MATRICES,
                     key=f"{key_prefix}_matrix",
                 )
             else:
                 matrix_name = st.selectbox(
-                    "Substitution matrix",
+                    "Substitution Matrix",
                     NUCLEOTIDE_SUBSTITUTION_MATRICES,
                     key=f"{key_prefix}_matrix",
                 )
@@ -420,14 +414,14 @@ def aligner_ui(protein, key_prefix="aligner"):
         col3, col4 = st.columns(2)
         with col3:
             open_gap_score = st.number_input(
-                "Gap opening penalty",
+                "Gap Opening Penalty",
                 value=-10,
                 step=1,
                 key=f"{key_prefix}_open_gap",
             )
         with col4:
             extend_gap_score = st.number_input(
-                "Gap extension penalty",
+                "Gap Extension Penalty",
                 value=-1,
                 step=1,
                 key=f"{key_prefix}_extend_gap",
@@ -436,7 +430,7 @@ def aligner_ui(protein, key_prefix="aligner"):
         # optional end-gap penalties
         with st.expander("Advanced: End-gap penalties"):
             use_end_gaps = st.checkbox(
-                "Enable end-gap penalties?", key=f"{key_prefix}_use_end_gaps"
+                "Enable End-Gap Penalties?", key=f"{key_prefix}_use_end_gaps"
             )
             left_open_gap_score = None
             right_open_gap_score = None
@@ -444,14 +438,14 @@ def aligner_ui(protein, key_prefix="aligner"):
                 col5, col6 = st.columns(2)
                 with col5:
                     left_open_gap_score = st.number_input(
-                        "Left end gap penalty",
+                        "Left End Gap Penalty",
                         value=0,
                         step=1,
                         key=f"{key_prefix}_left_end_gap",
                     )
                 with col6:
                     right_open_gap_score = st.number_input(
-                        "Right end gap penalty",
+                        "Right End Gap Penalty",
                         value=0,
                         step=1,
                         key=f"{key_prefix}_right_end_gap",
@@ -490,7 +484,7 @@ def show_alignments(ensemble_mapper, key="alignment_select"):
     shows the alignment present in all structure mappers of a selected chiain in the reference
     """
     selected_chain = st.selectbox(
-        "Select Chain to view alignment of",
+        "Select Chain to View Alignment of",
         options=[chain.id for chain in ensemble_mapper.ref_structure.get_chains()],
         key=key,
     )
@@ -513,7 +507,7 @@ def show_chain_alignment(chain_mapper):
     additionally, by hovering over a residue in the sequence the residue number will be shown
     """
     if chain_mapper is None or chain_mapper.alignment is None:
-        st.warning("No alignment available")
+        st.warning("No Alignment Available")
         return
 
     seqs = [seq for seq in chain_mapper.alignment]
@@ -666,7 +660,7 @@ def distance_threshold_ui(key_prefix="distance_threshold",
     Function to allow user input for distance thresholding with a double-ended slider.
     """
     enable_threshold = st.checkbox(
-        "Enable contact filtering",
+        "Enable Contact Filtering",
         value=False,
         help="Filter displayed contacts by distance range. Shows shared contacts, gained, and lost.",
         key=f"{key_prefix}_enable",
@@ -696,7 +690,7 @@ def distance_threshold_ui(key_prefix="distance_threshold",
         st.warning("Lower threshold must be less than upper threshold.")
 
     st.caption(
-        f"Showing contacts with distances between {lower_threshold:.1f}Å and {upper_threshold:.1f}Å"
+        f"Showing Contacts With Distances Between {lower_threshold:.1f}Å and {upper_threshold:.1f}Å"
     )
 
     return enable_threshold, lower_threshold, upper_threshold
@@ -722,7 +716,7 @@ def color_scale_ui(purpose="diverging", key_prefix="color_scale", default_colors
         col1, col2 = st.columns(2)
         with col1:
             vmin = st.number_input(
-                    "Min distance (Å)",
+                    "Min Value For Color Scale (Å)",
                     min_value=min,
                     value=min,
                     step=float(0.5),
@@ -730,7 +724,7 @@ def color_scale_ui(purpose="diverging", key_prefix="color_scale", default_colors
                 )
         with col2:
             vmax = st.number_input(
-                "Max distance (Å)",
+                "Max Value For Color Scale (Å)",
                 min_value=min,
                 value=max,
                 step=float(0.5),
@@ -764,148 +758,6 @@ def add_svg_download(fig, filename):
         mime="image/svg+xml",
         key=f"download_{random.random()}",
     )
-
-
-def display_chain_pair_selector(
-    ref_dm,
-    tgt_dm,
-    compare_dm,
-    selected_target,
-    lower_threshold,
-    upper_threshold,
-    contact_threshold=None,
-):
-    """Display chain-pair selector for large structures."""
-    _chains, pairs = get_chain_pair_options(ref_dm.index_map)
-
-    st.markdown("### Select Chain Interactions to Display")
-    st.caption(
-        "For large structures, select specific chain pairs to view interactively."
-    )
-    pair_labels = [p[2] for p in pairs]
-    default_selection = pair_labels[: min(3, len(pair_labels))]
-
-    selected_pairs = st.multiselect(
-        "Chain pairs",
-        pair_labels,
-        default=default_selection,
-        help="Select which chain interactions to display. Each pair will show as a separate heatmap.",
-        key="chain_pair_selector",
-    )
-
-    if not selected_pairs:
-        st.warning("Select at least one chain pair to display.")
-        return
-
-    if st.button("Show Selected Chain Pairs", key="show_chain_pairs"):
-        # Map labels back to chain IDs
-        label_to_chains = {p[2]: (p[0], p[1]) for p in pairs}
-
-        for pair_label in selected_pairs:
-            c1, c2 = label_to_chains[pair_label]
-            chain_ids = [c1] if c1 == c2 else [c1, c2]
-            st.markdown(f"#### {pair_label}")
-
-            try:
-                ref_sub = ref_dm.get_submatrix(chain_ids=chain_ids)
-                tgt_sub = tgt_dm.get_submatrix(chain_ids=chain_ids)
-                compare_sub = compare_dm.get_submatrix(chain_ids=chain_ids)
-
-                sub_size = ref_sub.get_size()
-                st.caption(f"{sub_size} residues")
-
-                ref_mat_filtered = ref_sub.mat
-                tgt_mat_filtered = tgt_sub.mat
-                if lower_threshold is not None and upper_threshold is not None:
-                    ref_mat_filtered = np.where(
-                        (ref_sub.mat > lower_threshold)
-                        & (ref_sub.mat < upper_threshold),
-                        ref_sub.mat,
-                        np.nan,
-                    )
-                    tgt_mat_filtered = np.where(
-                        (tgt_sub.mat > lower_threshold)
-                        & (tgt_sub.mat < upper_threshold),
-                        tgt_sub.mat,
-                        np.nan,
-                    )
-
-                shared_min = min(
-                    np.nanmin(ref_mat_filtered), np.nanmin(tgt_mat_filtered)
-                )
-                shared_max = max(
-                    np.nanmax(ref_mat_filtered), np.nanmax(tgt_mat_filtered)
-                )
-
-                col1, col2, col3 = st.columns(3)
-
-                with col1:
-                    ref_fig = plot_interactive_contact_map(
-                        ref_sub,
-                        lower_threshold=lower_threshold,
-                        upper_threshold=upper_threshold,
-                        title="Reference",
-                        min=shared_min,
-                        max=shared_max,
-                    )
-                    ref_fig.update_layout(width=400, height=400)
-                    st.plotly_chart(ref_fig, use_container_width=True)
-                    add_svg_download(ref_fig, "ref_fig_map.svg")
-
-                with col2:
-                    tgt_fig = plot_interactive_contact_map(
-                        tgt_sub,
-                        lower_threshold=lower_threshold,
-                        upper_threshold=upper_threshold,
-                        title="Target",
-                        min=shared_min,
-                        max=shared_max,
-                    )
-                    tgt_fig.update_layout(width=400, height=400)
-                    st.plotly_chart(tgt_fig, use_container_width=True)
-                    add_svg_download(tgt_fig, "tgt_fig_map.svg")
-
-                with col3:
-                    if contact_threshold is not None:
-                        compare_fig = plot_comparison_with_contact_filter(
-                            compare_sub,
-                            contact_threshold=contact_threshold,
-                            title="Δ Distance (shared)",
-                        )
-                    else:
-                        compare_fig = plot_interactive_contact_map(
-                            compare_sub,
-                            lower_threshold=lower_threshold,
-                            upper_threshold=upper_threshold,
-                            title="Δ Distance",
-                        )
-                    compare_fig.update_layout(width=400, height=400)
-                    st.plotly_chart(compare_fig, use_container_width=True)
-                    add_svg_download(compare_fig, "compare_fig_map.svg")
-
-                if contact_threshold is not None:
-                    col_g, col_l = st.columns(2)
-                    with col_g:
-                        gained_fig = plot_contacts_gained(
-                            compare_sub, contact_threshold=contact_threshold
-                        )
-                        gained_fig.update_layout(width=400, height=400)
-                        st.plotly_chart(gained_fig, use_container_width=True)
-                        add_svg_download(gained_fig, "gained__fig_map.svg")
-                    with col_l:
-                        lost_fig = plot_contacts_lost(
-                            compare_sub, contact_threshold=contact_threshold
-                        )
-                        lost_fig.update_layout(width=400, height=400)
-                        st.plotly_chart(lost_fig, use_container_width=True)
-                        add_svg_download(lost_fig, "lost_fig_map.svg")
-
-                with st.expander(f"View {pair_label} data table"):
-                    pair_df = compare_sub.convert_to_df()
-                    st.dataframe(pair_df, use_container_width=True)
-
-            except ValueError as e:
-                st.error(f"Could not display {pair_label}: {e}")
 
 
 def get_available_chains(structure_path):
