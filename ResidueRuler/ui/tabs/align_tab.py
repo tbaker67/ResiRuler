@@ -61,7 +61,7 @@ def show_align_tab():
     st.header("Run US-align Structure Alignment")
 
     st.markdown(
-        "Upload two structure files (.cif) to run US-align and get the rotation & translation matrices."
+        "Upload two structure files (.cif) to run US-align and get the 2nd structure aligned to the first."
     )
 
     struct1 = st.file_uploader("Upload Reference Structure (Structure 1)", type=["cif"])
@@ -90,9 +90,6 @@ def show_align_tab():
             return
 
         try:
-            # a new run replaces the reference/aligned CIF strings and the
-            # (possibly 4x-duplicated) filtered outputs from a prior run -
-            # free those before generating the new ones
             reset_downstream(
                 "usalign_R",
                 "usalign_t",
@@ -153,9 +150,7 @@ def show_align_tab():
 
         # Download aligned CIF
         st.subheader("Download Options")
-        cif_filename = st.text_input(
-            "CIF Output Filename", value="aligned_structure.cif"
-        )
+        cif_filename = f"{os.path.splitext(struct2.name)[0]}_aligned.cif"
 
         st.download_button(
             label="Download Aligned CIF",

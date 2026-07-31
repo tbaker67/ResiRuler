@@ -497,11 +497,11 @@ def full_aligner_ui(key):
 
         rmsd_score_scaling_factor = st.number_input(
             "Scaling Factor For RMSD Penalty",
-            value = float(1e-6),
+            value = float(0.3),
             key=f"{key}_rmsd_scaling_factor",
             min_value=0.0,
-            step=1e-6,
-            format="%.8f",
+            step=1e-4,
+            format="%.4f",
             help= "This value is used to adjust how much to " \
                 "penalize rmsd between chains during the chain matching process. " \
                 "A higher value means that chains that are further apart will be more heavily penalized"
