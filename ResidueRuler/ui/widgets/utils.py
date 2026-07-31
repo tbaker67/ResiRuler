@@ -497,7 +497,7 @@ def full_aligner_ui(key):
 
         rmsd_score_scaling_factor = st.number_input(
             "Scaling Factor For RMSD Penalty",
-            value = float(0.3),
+            value = float(0.05),
             key=f"{key}_rmsd_scaling_factor",
             min_value=0.0,
             step=1e-4,

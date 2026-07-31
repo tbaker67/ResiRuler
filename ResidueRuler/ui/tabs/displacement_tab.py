@@ -207,19 +207,21 @@ def show_displacement_tab():
             max_val,
         )
         annotations_json = json.dumps(annotations)
-
+        disp_ref, disp_tgt = st.columns(2)
         with (
             struct_to_temp_cif(ref_structure) as ref_cif_path,
             struct_to_temp_cif(tgt_structures[selected_structure]) as tgt_cif_path,
         ):
             ref_cif_data = open(ref_cif_path).read()
             tgt_cif_data = open(tgt_cif_path).read()
-            builder.molstar_streamlit(
-                data={
-                    "local.cif": ref_cif_data,
-                    "annotations.json": annotations_json,
-                }
-            )
+            with disp_ref:
+                st.subheader(os.path.splitext(ref_cif.name)[0])
+                builder.molstar_streamlit(
+                    data={
+                        "local.cif": ref_cif_data,
+                        "annotations.json": annotations_json,
+                    }
+                )
 
             annotations2 = write_displacement_annotations(
                 filtered_displacement_dfs[selected_structure],
@@ -229,12 +231,14 @@ def show_displacement_tab():
                 ref=False,
             )
             annotations_json2 = json.dumps(annotations2)
-            builder.molstar_streamlit(
-                data={
-                    "local.cif": tgt_cif_data,
-                    "annotations.json": annotations_json2,
-                },
-            )
+            with disp_tgt:
+                st.subheader(selected_structure)
+                builder.molstar_streamlit(
+                    data={
+                        "local.cif": tgt_cif_data,
+                        "annotations.json": annotations_json2,
+                    }
+                )
 
         st.subheader("Displacement Data")
         st.dataframe(filtered_displacement_dfs[selected_structure])

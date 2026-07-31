@@ -76,13 +76,16 @@ The user is also provided with options for adjusting parameters associated with 
 The Pairwise Distance Difference Tab provides a view of how the distances between pairs of residues are changing across structures.
 This can be represented both by raw distance changes, as well as changes in "contacts" based upon user specified thresholds
 
-Start by uploading the ALIGNED structure(s) of interest
+Start by uploading the ALIGNED structure(s) of interest. A single "reference" structure and as many "comparison" structures as they have.
 
 ![Pairwise Distance Difference Tab 1](ResidueRuler/images/compare/Compare_Page1.png)
 
 
 Next, correspondence between chains in the reference and comparison/target structures can either be explicitly defined by the user.
-Any chains that are not matched by the user, will enter the automatic chain mapping algorithm.
+Any chains that are not matched by the user, will enter the automatic chain mapping algorithm. The UI offers users the ability to adjust 
+the parameters for the automatic algorithm including settings for the sequence alignment, penalty for rmsd, and the minimum percent identity
+needed for a valid match between two chains. Note that hovering over any of the question mark bubbles in the UI can give more explanation 
+for some of these settings.
 
 ![Pairwise Distance Difference Tab 2](ResidueRuler/images/compare/Compare_Page2.png)
 
@@ -98,28 +101,32 @@ The user will then select the chains they would like to display in the plots, an
 
 ## The "Per-Residue Displacement" Tab
 
+The Per-Residue Displacement Tab calculates displacement between residues in the reference their corresponding counterparts in the comparison structure to produce visualizations of the direction and magnitude of that displacement.
 
-Calculate how each residue moves between two aligned conformations via calculting the distance between corresponding residues in the two structures.
+Similar to the Pairwise Distance Difference Tab, the user begin by uploading the reference structure and any number of comparison structures. They will also use a similar interface to specify chain correspondences if they would like to.
+![Per-Residue Displacement Tab 1](ResidueRuler/images/compare/Compare_Page1.png)
+![Per-Residue Displacement Tab 2](ResidueRuler/images/compare/Compare_Page2.png)
 
-Here, you must use aligned structures/models, but can choose any preffered method.
+After alignment, the user can press the "Analyze Displacement" button to run the calculations, where they are then given the option to specify
+a custom color scale to use for the visualizations in addition to a vector fidelity slider which is used to adjust how many displacement vectors
+are shown.
 
-![Per-Residue Displacement Tab 1](ResidueRuler/images/movement/Movement_Page1.png)
+![Per-Residue Displacement Tab 3](ResidueRuler/images/movement/Displacement_Page1.png)
 
-The Data Table will have the distance as well as the vector describing how each residue is moving between the two structures.
-![Per-Residue Displacement Tab 2](ResidueRuler/images/movement/Movement_Page2.png)
+In app visualitions along with a table with all of the associated data will then be displayed for the user.
 
-There will also be a color bar, which corresponds to the PyMol Viewer Preview Visualizations.
-![Per-Residue Displacement Tab 3](ResidueRuler/images/movement/Movement_Page3.png)
+![Per-Residue Displacement Tab 4](ResidueRuler/images/movement/Displacement_Page2.png)
 
-![Per-Residue Displacement Tab 4](ResidueRuler/images/movement/Movement_Page4.png)
+Finally, the user can download a zipped folder containing the data, visualization scripts, and models.
 
-There will be an option to download a zipped folder containing these file contents.
-- Opening the .cxc script calls the defattr files and will color in atoms into chimeraX, where you can then adjust as you see fit
-- Opening the .bild file will put the vector representation into ChimeraX
-- The csv contains all the associated data
-- The cif files used for this comparison
+![Per-Residue Displacement Tab 5](ResidueRuler/images/movement/Displacement_Page3.png)
+![Per-Residue Displacement Tab 6](ResidueRuler/images/movement/Displacement_Page4.png)
 
-![Per-Residue Displacement Tab 5](ResidueRuler/images/movement/Movement_Page5.png)
+The `coloring_script.pml` and `chimera_coloring_script.cxc` will open and color all models for PyMol and ChimeraX respectively.
+ - Models are named: {Model being shown}-{Model it was calculated against}
+
+The `pml_arrows` and `bild` folders contain all of the arrows used for the displacement vector visualization and both will contain
+a script `run_all_arrows.pml` and `open_all_bilds.cxc` to display all of the arrows 
 
 **Example Visualization**:
 
