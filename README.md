@@ -2,7 +2,7 @@
 
 # ResiRuler
 
-**A web-based tool for residue-level structural comparison of biomolecular models**
+**A browser-based UI tool for residue-level structural comparison of biomolecular models**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](#requirements)
