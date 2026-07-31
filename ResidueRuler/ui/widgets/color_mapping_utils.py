@@ -109,7 +109,7 @@ def gradient_palette_picker(
 
         with col2:
             pos = st.number_input(
-                f"Position of stop {i + 1} (0-1)",
+                f"Value for Color Stop {i + 1}",
                 value=float(default_positions[i]),
                 step=0.01,
                 key=f"{key}_pos_{i}",

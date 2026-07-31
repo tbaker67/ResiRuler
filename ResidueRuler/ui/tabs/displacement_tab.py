@@ -89,6 +89,7 @@ def show_displacement_tab():
             "pml_script",
             "bild_scripts",
             "pml_arrows",
+            "zip_buffer",
         )
         st.session_state.disp_mapper = create_ensemble_mapper(
             ref_structure,
@@ -117,6 +118,7 @@ def show_displacement_tab():
             "pml_script",
             "bild_scripts",
             "pml_arrows",
+            "zip_buffer",
         )
         st.session_state.disp_mapper.set_selected_global_coords(
             protein_mode=protein_mode, nucleic_mode=nucleic_mode
@@ -237,76 +239,80 @@ def show_displacement_tab():
         st.subheader("Displacement Data")
         st.dataframe(filtered_displacement_dfs[selected_structure])
 
-        st.session_state.ref_name = os.path.splitext(ref_cif.name)[0]
-        defatt, chimera_cxc, full_pml_script = generate_multiple_displacement_scripts(
-            filtered_displacement_dfs,
-            st.session_state.ref_name,
-            palette,
-            positions,
-        )
-
-        st.session_state.defatt = defatt
-        st.session_state.chimera_script = chimera_cxc
-        st.session_state.pml_script = full_pml_script
-        st.session_state.bild_scripts, st.session_state.pml_arrows = (
-            generate_arrow_dicts(
-                filtered_displacement_dfs,
-                cmap_obj,
-                min_val,
-                max_val,
-                fidelity=fidelity,
-            )
-        )
-
-        root_files = {
-            "full_defattr.defattr": st.session_state.defatt,
-            "chimera_coloring_script.cxc": st.session_state.chimera_script,
-            "coloring_script.pml": st.session_state.pml_script,
-        }
-
-        # --- CSV files per structure ---
-        csv_dict = {}
-        for struct_name, df in filtered_displacement_dfs.items():
-            csv_filename = f"{struct_name}_displacement.csv"
-            csv_dict[csv_filename] = df.to_csv(index=False)
-
-        # --- Arrow files ---
-        bild_dict = st.session_state.bild_scripts  # {filename: content}
-        pml_arrows_dict = st.session_state.pml_arrows
-
-        chimerax_script_content = save_bild_files_and_generate_chimerax_script(
-            bild_dict
-        )
-        bild_dict["open_all_bilds.cxc"] = chimerax_script_content
-
-        pymol_arrows_script_content = save_pml_files_and_generate_pymol_script(
-            pml_arrows_dict
-        )
-        pml_arrows_dict["run_all_arrows.pml"] = pymol_arrows_script_content
-        # --- models (CIFs) ---
-        models_dict = {}
-        if ref_cif:
-            ref_name = Path(ref_cif.name).name
-            models_dict[ref_name] = ref_cif.getvalue().decode("utf-8")
-        for cif in tgt_cifs:
-            cif_name = Path(cif.name).name
-            models_dict[cif_name] = cif.getvalue().decode("utf-8")
-
-        # --- combine into grouped ZIP ---
-        file_groups = {
-            None: root_files,  # root folder
-            "csv": csv_dict,
-            "bild": bild_dict,
-            "pml_arrows": pml_arrows_dict,
-            "models": models_dict,
-        }
-
-        zip_buffer = create_downloadable_zip_grouped(file_groups)
-
         st.subheader("Download Full Data and Scripts Folder")
-        st.download_button(
-            "Download All as ZIP",
-            data=zip_buffer,
-            file_name="resi_ruler_displacement_output.zip",
-            mime="application/zip",
-        )
+
+        if st.button("Generate Download Package", key="generate_displacement_zip"):
+            st.session_state.ref_name = os.path.splitext(ref_cif.name)[0]
+            defatt, chimera_cxc, full_pml_script = generate_multiple_displacement_scripts(
+                filtered_displacement_dfs,
+                st.session_state.ref_name,
+                palette,
+                positions,
+            )
+
+            st.session_state.defatt = defatt
+            st.session_state.chimera_script = chimera_cxc
+            st.session_state.pml_script = full_pml_script
+            st.session_state.bild_scripts, st.session_state.pml_arrows = (
+                generate_arrow_dicts(
+                    filtered_displacement_dfs,
+                    cmap_obj,
+                    min_val,
+                    max_val,
+                    fidelity=fidelity,
+                )
+            )
+
+            root_files = {
+                "full_defattr.defattr": st.session_state.defatt,
+                "chimera_coloring_script.cxc": st.session_state.chimera_script,
+                "coloring_script.pml": st.session_state.pml_script,
+            }
+
+            # --- CSV files per structure ---
+            csv_dict = {}
+            for struct_name, df in filtered_displacement_dfs.items():
+                csv_filename = f"{struct_name}_displacement.csv"
+                csv_dict[csv_filename] = df.to_csv(index=False)
+
+            # --- Arrow files ---
+            bild_dict = st.session_state.bild_scripts  # {filename: content}
+            pml_arrows_dict = st.session_state.pml_arrows
+
+            chimerax_script_content = save_bild_files_and_generate_chimerax_script(
+                bild_dict
+            )
+            bild_dict["open_all_bilds.cxc"] = chimerax_script_content
+
+            pymol_arrows_script_content = save_pml_files_and_generate_pymol_script(
+                pml_arrows_dict
+            )
+            pml_arrows_dict["run_all_arrows.pml"] = pymol_arrows_script_content
+
+            # --- models (CIFs) ---
+            models_dict = {}
+            if ref_cif:
+                ref_name = Path(ref_cif.name).name
+                models_dict[ref_name] = ref_cif.getvalue().decode("utf-8")
+            for cif in tgt_cifs:
+                cif_name = Path(cif.name).name
+                models_dict[cif_name] = cif.getvalue().decode("utf-8")
+
+            # --- combine into grouped ZIP ---
+            file_groups = {
+                None: root_files,  # root folder
+                "csv": csv_dict,
+                "bild": bild_dict,
+                "pml_arrows": pml_arrows_dict,
+                "models": models_dict,
+            }
+
+            st.session_state.zip_buffer = create_downloadable_zip_grouped(file_groups)
+
+        if st.session_state.get("zip_buffer") is not None:
+            st.download_button(
+                "Download All as ZIP",
+                data=st.session_state.zip_buffer,
+                file_name="resi_ruler_displacement_output.zip",
+                mime="application/zip",
+            )
