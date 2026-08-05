@@ -152,6 +152,7 @@ Calculate the displacement between residues in the reference structure and their
 ### Downloaded Script Reference
 
 Each displacement download includes ready-made scripts:
+(Note that the coloring scripts should be opened in a fresh session.)
 
 | File | Purpose |
 |---|---|
